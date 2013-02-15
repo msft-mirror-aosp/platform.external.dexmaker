@@ -9,4 +9,8 @@ It has a small, close-to-the-metal API. This API mirrors the Dalvik bytecode spe
 It includes a stock code generator for class proxies. If you just want to do AOP or class mocking, you don't need to mess around with bytecodes.
 
 Local Modifications:
-      None
+bug-8108255.patch: temporary workaround to ClassLoading issues
+    (see https://code.google.com/p/dexmaker/issues/detail?id=20)
+
+to apply, run 'patch -p1 < bug-xyz.patch' from a fresh src
+to remove, use 'patch -p1 -R < bug-xyz.patch'
