@@ -17,7 +17,6 @@
 package com.google.dexmaker.mockito;
 
 import com.google.dexmaker.stock.ProxyBuilder;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.Set;
@@ -45,10 +44,9 @@ public final class DexmakerMockMaker implements MockMaker, StackTraceCleanerProv
             Class[] classesToMock = new Class[extraInterfaces.length + 1];
             classesToMock[0] = typeToMock;
             System.arraycopy(extraInterfaces, 0, classesToMock, 1, extraInterfaces.length);
-            ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
             @SuppressWarnings("unchecked") // newProxyInstance returns the type of typeToMock
-            T mock = (T) Proxy.newProxyInstance(contextClassLoader, classesToMock,
-                    invocationHandler);
+            T mock = (T) Proxy.newProxyInstance(typeToMock.getClassLoader(),
+                    classesToMock, invocationHandler);
             return mock;
 
         } else {
@@ -58,9 +56,7 @@ public final class DexmakerMockMaker implements MockMaker, StackTraceCleanerProv
                         .implementing(extraInterfaces)
                         .buildProxyClass();
                 T mock = unsafeAllocator.newInstance(proxyClass);
-                Field handlerField = proxyClass.getDeclaredField("$__handler");
-                handlerField.setAccessible(true);
-                handlerField.set(mock, invocationHandler);
+                ProxyBuilder.setInvocationHandler(mock, invocationHandler);
                 return mock;
             } catch (RuntimeException e) {
                 throw e;
