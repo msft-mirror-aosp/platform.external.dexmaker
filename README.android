@@ -19,6 +19,6 @@ bug-8108255.patch: temporary workaround to ClassLoading issues
 bug-10862083.patch: Do not assert that InvocationHandler.invoke args should be non-null
     (see https://code.google.com/p/dexmaker/issues/detail?id=27)
 
-to apply, run 'patch -p0 < bug-xyz.patch' from a fresh src
-to remove, use 'patch -p0 -R < bug-xyz.patch'
+to apply, run 'patch -p1 < bug-xyz.patch' from a fresh src
+to remove, use 'patch -p1 -R < bug-xyz.patch'
 
