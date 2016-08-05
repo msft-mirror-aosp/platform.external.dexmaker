@@ -898,6 +898,19 @@ public class ProxyBuilderTest extends TestCase {
         proxyFor(YouDoNotChooseYourFamily.class).build();
     }
 
+    public interface ExtendsAnotherInterface extends FooReturnsString {
+
+    }
+
+    public void testExtraInterfaceExtendsInterface() throws Exception {
+        ExtendsAnotherInterface proxy = (ExtendsAnotherInterface)
+                proxyFor(SimpleClass.class)
+                        .implementing(ExtendsAnotherInterface.class)
+                        .build();
+        fakeHandler.setFakeResult(ExtendsAnotherInterface.class.getName());
+        assertEquals(ExtendsAnotherInterface.class.getName(), proxy.foo());
+    }
+
     /** Simple helper to add the most common args for this test to the proxy builder. */
     private <T> ProxyBuilder<T> proxyFor(Class<T> clazz) throws Exception {
         return ProxyBuilder.forClass(clazz)
