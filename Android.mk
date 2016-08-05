@@ -26,6 +26,19 @@ LOCAL_MODULE := dexmaker
 # Build a static jar file.
 include $(BUILD_STATIC_JAVA_LIBRARY)
 
+# Build Dexmaker's tests
+#
+# Run the tests as follows:
+#   vogar --classpath ${ANDROID_PRODUCT_OUT}/obj/JAVA_LIBRARIES/dexmaker-tests_intermediates/classes.jack \
+        com.google.dexmaker
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := dexmaker-tests
+LOCAL_SDK_VERSION := 10
+LOCAL_SRC_FILES := $(call all-java-files-under, dexmaker/src/test/java)
+LOCAL_STATIC_JAVA_LIBRARIES := dexmaker
+include $(BUILD_STATIC_JAVA_LIBRARY)
+
 # Build Dexmaker's MockMaker, a plugin to Mockito
 include $(CLEAR_VARS)
 LOCAL_MODULE := dexmaker-mockmaker
