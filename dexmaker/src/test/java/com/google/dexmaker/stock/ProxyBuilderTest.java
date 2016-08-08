@@ -37,7 +37,9 @@ public class ProxyBuilderTest extends TestCase {
 
     public void setUp() throws Exception {
         super.setUp();
-        versionedDxDir.mkdirs();
+        if (!versionedDxDir.exists() && !versionedDxDir.mkdirs()) {
+            throw new IOException("Could not create " + versionedDxDir);
+        }
         clearVersionedDxDir();
         getGeneratedProxyClasses().clear();
     }

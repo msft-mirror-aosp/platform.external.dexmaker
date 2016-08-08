@@ -36,7 +36,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := dexmaker-tests
 LOCAL_SDK_VERSION := 10
 LOCAL_SRC_FILES := $(call all-java-files-under, dexmaker/src/test/java)
-LOCAL_STATIC_JAVA_LIBRARIES := dexmaker
+LOCAL_STATIC_JAVA_LIBRARIES := dexmaker android-support-test
 include $(BUILD_STATIC_JAVA_LIBRARY)
 
 # Build Dexmaker's MockMaker, a plugin to Mockito
@@ -47,3 +47,18 @@ LOCAL_SRC_FILES := $(call all-java-files-under, mockito/src/main/java)
 LOCAL_JAVA_RESOURCE_DIRS := mockito/src/main/resources
 LOCAL_JAVA_LIBRARIES := dexmaker mockito-api
 include $(BUILD_STATIC_JAVA_LIBRARY)
+
+# Build a test APK
+#
+# Run the tests as follows:
+# m -j32 DexmakerTests && \
+        am install -r -g $OUT/data/app/DexmakerTests/DexmakerTests.apk \
+        adb shell am instrument -w com.google.dexmaker.tests
+#
+include $(CLEAR_VARS)
+LOCAL_MODULE_TAGS := tests
+LOCAL_PACKAGE_NAME := DexmakerTests
+LOCAL_STATIC_JAVA_LIBRARIES := \
+        dexmaker-tests
+
+include $(BUILD_PACKAGE)
