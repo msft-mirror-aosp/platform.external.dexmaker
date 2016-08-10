@@ -853,7 +853,7 @@ public final class Code {
      * Releases the held lock on {@code monitor}.
      */
     public void monitorExit(Local<?> monitor) {
-        addInstruction(new ThrowingInsn(Rops.MONITOR_ENTER, sourcePosition,
+        addInstruction(new ThrowingInsn(Rops.MONITOR_EXIT, sourcePosition,
                 RegisterSpecList.make(monitor.spec()), catches));
     }
 

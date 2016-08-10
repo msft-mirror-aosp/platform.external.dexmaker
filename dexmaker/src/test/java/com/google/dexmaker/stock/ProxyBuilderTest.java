@@ -37,7 +37,9 @@ public class ProxyBuilderTest extends TestCase {
 
     public void setUp() throws Exception {
         super.setUp();
-        versionedDxDir.mkdirs();
+        if (!versionedDxDir.exists() && !versionedDxDir.mkdirs()) {
+            throw new IOException("Could not create " + versionedDxDir);
+        }
         clearVersionedDxDir();
         getGeneratedProxyClasses().clear();
     }
@@ -880,6 +882,35 @@ public class ProxyBuilderTest extends TestCase {
 
     public void testFinalInterfaceImpl() throws Throwable {
         assertEquals("no proxy", proxyFor(ExtenstionOfFinalInterfaceImpl.class).build().foo());
+    }
+
+    // https://code.google.com/p/dexmaker/issues/detail?id=9
+    public interface DeclaresMethodLate {
+        void thisIsTheMethod();
+    }
+
+    public static class MakesMethodFinalEarly {
+        public final void thisIsTheMethod() {}
+    }
+
+    public static class YouDoNotChooseYourFamily
+            extends MakesMethodFinalEarly implements DeclaresMethodLate {}
+
+    public void testInterfaceMethodMadeFinalBeforeActualInheritance() throws Exception {
+        proxyFor(YouDoNotChooseYourFamily.class).build();
+    }
+
+    public interface ExtendsAnotherInterface extends FooReturnsString {
+
+    }
+
+    public void testExtraInterfaceExtendsInterface() throws Exception {
+        ExtendsAnotherInterface proxy = (ExtendsAnotherInterface)
+                proxyFor(SimpleClass.class)
+                        .implementing(ExtendsAnotherInterface.class)
+                        .build();
+        fakeHandler.setFakeResult(ExtendsAnotherInterface.class.getName());
+        assertEquals(ExtendsAnotherInterface.class.getName(), proxy.foo());
     }
 
     /** Simple helper to add the most common args for this test to the proxy builder. */

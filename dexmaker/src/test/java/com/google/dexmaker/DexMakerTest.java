@@ -16,6 +16,7 @@
 
 package com.google.dexmaker;
 
+import android.support.test.InstrumentationRegistry;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -2007,6 +2008,18 @@ public final class DexMakerTest extends TestCase {
     }
 
     public static File getDataDirectory() {
+        // Assume that this is being run as an APK by AndroidJUnitRunner and so get the directory
+        // where the APK can create files.
+        try {
+            // This will fail on Vogar as it will not register an Instrumentation.
+            return InstrumentationRegistry.getContext().getFilesDir();
+        } catch (IllegalStateException t) {
+            // Drop through to an alternate mechanism for getting a directory that works on Vogar.
+            if (!t.getMessage().contains("No instrumentation registered!")) {
+                // The exception wasn't expected.
+                throw t;
+            }
+        }
         String envVariable = "ANDROID_DATA";
         String defaultLoc = "/data";
         String path = System.getenv(envVariable);
