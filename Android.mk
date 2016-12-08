@@ -48,6 +48,15 @@ LOCAL_JAVA_RESOURCE_DIRS := mockito/src/main/resources
 LOCAL_JAVA_LIBRARIES := dexmaker mockito-api
 include $(BUILD_STATIC_JAVA_LIBRARY)
 
+# Build Dexmaker's Updated MockMaker, a plugin to Mockito
+include $(CLEAR_VARS)
+LOCAL_MODULE := dexmaker-mockmaker-updated
+LOCAL_SDK_VERSION := 10
+LOCAL_SRC_FILES := $(call all-java-files-under, mockito-updated/src/main/java)
+LOCAL_JAVA_RESOURCE_DIRS := mockito-updated/src/main/resources
+LOCAL_JAVA_LIBRARIES := dexmaker mockito-updated-api
+include $(BUILD_STATIC_JAVA_LIBRARY)
+
 # Build a test APK
 #
 # Run the tests as follows:
