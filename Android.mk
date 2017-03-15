@@ -62,3 +62,5 @@ LOCAL_STATIC_JAVA_LIBRARIES := \
         dexmaker-tests
 
 include $(BUILD_PACKAGE)
+
+include $(call all-makefiles-under,$(LOCAL_PATH))
