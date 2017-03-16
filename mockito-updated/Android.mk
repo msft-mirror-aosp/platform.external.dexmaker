@@ -20,5 +20,5 @@ LOCAL_MODULE := dexmaker-mockmaker-updated
 LOCAL_SDK_VERSION := 10
 LOCAL_SRC_FILES := $(call all-java-files-under, src/main/java)
 LOCAL_JAVA_RESOURCE_DIRS := src/main/resources
-LOCAL_JAVA_LIBRARIES := dexmaker mockito-updated-api
+LOCAL_JAVA_LIBRARIES := mockito-updated-api
 include $(BUILD_STATIC_JAVA_LIBRARY)
