@@ -43,8 +43,8 @@ include $(BUILD_STATIC_JAVA_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE := dexmaker-mockmaker
 LOCAL_SDK_VERSION := 10
-LOCAL_SRC_FILES := $(call all-java-files-under, mockito/src/main/java)
-LOCAL_JAVA_RESOURCE_DIRS := mockito/src/main/resources
+LOCAL_SRC_FILES := $(call all-java-files-under, dexmaker-mockito/src/main/java)
+LOCAL_JAVA_RESOURCE_DIRS := dexmaker-mockito/src/main/resources
 LOCAL_JAVA_LIBRARIES := dexmaker mockito-api
 include $(BUILD_STATIC_JAVA_LIBRARY)
 
