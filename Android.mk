@@ -46,3 +46,5 @@ LOCAL_PREBUILT_STATIC_JAVA_LIBRARIES := \
     dexmaker-dex-target:lib/libcore-dex-2$(COMMON_JAVA_PACKAGE_SUFFIX) \
 
 include $(BUILD_MULTI_PREBUILT)
+
+include $(call all-makefiles-under, $(LOCAL_PATH))
