@@ -9,4 +9,4 @@ It has a small, close-to-the-metal API. This API mirrors the Dalvik bytecode spe
 It includes a stock code generator for class proxies. If you just want to do AOP or class mocking, you don't need to mess around with bytecodes.
 
 Local Modifications:
-        None
+        Allow to share classloader via dexmaker.share_classloader system property (I8c2490c3ec8e8582dc41c486f8f7a406bd635ebb)
