@@ -31,14 +31,12 @@ import com.android.dx.rop.code.RopMethod;
 import com.android.dx.rop.cst.CstString;
 import com.android.dx.rop.cst.CstType;
 import com.android.dx.rop.type.StdTypeList;
-import com.android.dx.stock.ProxyBuilder;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
-import dalvik.system.DexClassLoader;
-
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -199,6 +197,7 @@ import static java.lang.reflect.Modifier.STATIC;
  */
 public final class DexMaker {
     private final Map<TypeId<?>, TypeDeclaration> types = new LinkedHashMap<>();
+    private ClassLoader sharedClassLoader;
 
     /**
      * Creates a new {@code DexMaker} instance, which can be used to create a
@@ -269,7 +268,7 @@ public final class DexMaker {
             flags = (flags & ~Modifier.SYNCHRONIZED) | AccessFlags.ACC_DECLARED_SYNCHRONIZED;
         }
 
-        if (method.isConstructor()) {
+        if (method.isConstructor() || method.isStaticInitializer()) {
             flags |= ACC_CONSTRUCTOR;
         }
 
@@ -357,15 +356,16 @@ public final class DexMaker {
         return "Generated_" + checksum +".jar";
     }
 
-    private ClassLoader generateClassLoader(ClassLoader classLoader, File result, File dexCache,
-            ClassLoader parent) {
+    public void setSharedClassLoader(ClassLoader classLoader) {
+        this.sharedClassLoader = classLoader;
+    }
+
+    private ClassLoader generateClassLoader(File result, File dexCache, ClassLoader parent) {
         try {
-            boolean shareClassLoader = Boolean.parseBoolean(System.getProperty(
-                        "dexmaker.share_classloader", "false"));
-            if (shareClassLoader) {
-                ClassLoader loader = parent != null ? parent : classLoader;
+            if (sharedClassLoader != null) {
+                ClassLoader loader = parent != null ? parent : sharedClassLoader;
                 loader.getClass().getMethod("addDexPath", String.class).invoke(loader,
-                         result.getPath());
+                        result.getPath());
                 return loader;
             } else {
                 return (ClassLoader) Class.forName("dalvik.system.DexClassLoader")
@@ -411,11 +411,6 @@ public final class DexMaker {
      *     application's private data dir.
      */
     public ClassLoader generateAndLoad(ClassLoader parent, File dexCache) throws IOException {
-        return generateAndLoad(parent, parent, dexCache);
-    }
-
-    public ClassLoader generateAndLoad(ClassLoader classLoader, ClassLoader parent, File dexCache)
-            throws IOException {
         if (dexCache == null) {
             String property = System.getProperty("dexmaker.dexcache");
             if (property != null) {
@@ -433,7 +428,7 @@ public final class DexMaker {
         // Check that the file exists. If it does, return a DexClassLoader and skip all
         // the dex bytecode generation.
         if (result.exists()) {
-            return generateClassLoader(classLoader, result, dexCache, parent);
+            return generateClassLoader(result, dexCache, parent);
         }
 
         byte[] dex = generate();
@@ -453,7 +448,7 @@ public final class DexMaker {
         jarOut.write(dex);
         jarOut.closeEntry();
         jarOut.close();
-        return generateClassLoader(classLoader, result, dexCache, parent);
+        return generateClassLoader(result, dexCache, parent);
     }
 
     private static class TypeDeclaration {
