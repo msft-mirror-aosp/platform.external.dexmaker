@@ -10,3 +10,4 @@ It includes a stock code generator for class proxies. If you just want to do AOP
 
 Local Modifications:
         Allow to share classloader via dexmaker.share_classloader system property (I8c2490c3ec8e8582dc41c486f8f7a406bd635ebb)
+        Dynamically register transformation hook (I2556e749806bed4f80697d5cba38a8d8a2f7ce6a)
