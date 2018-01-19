@@ -45,10 +45,13 @@ java_library_static {
     srcs: ["dexmaker-mockito-inline-dispatcher/src/main/java/**/*.java"],
 }
 
-// Build agent for Dexmaker's inline MockMaker
-cc_library_shared {
-    name: "libdexmakerjvmtiagent",
-    srcs: ["dexmaker-mockito-inline/src/main/jni/**/*.cc"],
+// Defaults for agent code.
+cc_defaults {
+    name: "dexmaker_agent_defaults",
+
+    // Compile with the NDK, so that the agent can be used in apps.
+    sdk_version: "current",
+    stl: "libc++_static",
 
     host_supported: false,
     device_supported: true,
@@ -68,51 +71,35 @@ cc_library_shared {
     ],
 
     static_libs: [
-        "slicer",
+        "slicer_ndk",
     ],
 
     shared_libs: [
         "libz",
     ],
 
-    header_libs: [
-        "libopenjdkjvmti_headers",
+    // As an NDK-based library we cannot depend on libopenjdkjvmti_headers.
+    include_dirs: [
+        "art/openjdkjvmti/include",
     ],
+}
+
+// Build agent for Dexmaker's inline MockMaker
+cc_library_shared {
+    name: "libdexmakerjvmtiagent",
+    defaults: [
+        "dexmaker_agent_defaults",
+    ],
+    srcs: ["dexmaker-mockito-inline/src/main/jni/**/*.cc"],
 }
 
 // Build agent for Dexmaker's inline tests
 cc_library_shared {
     name: "libmultiplejvmtiagentsinterferenceagent",
+    defaults: [
+        "dexmaker_agent_defaults",
+    ],
     srcs: ["dexmaker-mockito-inline-tests/src/main/jni/**/*.cc"],
-
-    host_supported: false,
-    device_supported: true,
-
-    rtti: true,
-
-    cflags: [
-        "-std=c++11",
-        "-Wall",
-        "-Werror",
-        "-Wno-unused-parameter",
-        "-Wno-shift-count-overflow",
-        "-Wno-error=non-virtual-dtor",
-        "-Wno-sign-compare",
-        "-Wno-switch",
-        "-Wno-missing-braces",
-    ],
-
-    static_libs: [
-        "slicer",
-    ],
-
-    shared_libs: [
-        "libz",
-    ],
-
-    header_libs: [
-        "libopenjdkjvmti_headers",
-    ],
 }
 
 // Build Dexmaker's inline MockMaker, a plugin to Mockito
