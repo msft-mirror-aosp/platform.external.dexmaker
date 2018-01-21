@@ -779,6 +779,19 @@ Java_com_android_dx_mockito_inline_ClassTransformer_nativeRedefine(JNIEnv* env,
     return transformedArr;
 }
 
+// Register the ClassFileLoadHook hook. This causes Transform to be called for every class load and
+// for every trigger of RetransformClasses
+static jvmtiError registerClassFileLoadHook() {
+    return localJvmtiEnv->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK,
+                                                   NULL);
+}
+
+// Unregister the ClassFileLoadHook hook.
+static jvmtiError unregisterClassFileLoadHook() {
+    return localJvmtiEnv->SetEventNotificationMode(JVMTI_DISABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK,
+                                                   NULL);
+}
+
 // Initializes the agent
 extern "C" jint Agent_OnAttach(JavaVM* vm,
                                char* options,
@@ -802,12 +815,6 @@ extern "C" jint Agent_OnAttach(JavaVM* vm,
     cb.ClassFileLoadHook = Transform;
 
     error = localJvmtiEnv->SetEventCallbacks(&cb, sizeof(cb));
-    if (error != JVMTI_ERROR_NONE) {
-        return error;
-    }
-
-    error = localJvmtiEnv->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK,
-                                                    NULL);
     if (error != JVMTI_ERROR_NONE) {
         return error;
     }
@@ -854,8 +861,16 @@ Java_com_android_dx_mockito_inline_JvmtiAgent_nativeRetransformClasses(JNIEnv* e
         transformedClasses[i] = (jclass) env->NewGlobalRef(env->GetObjectArrayElement(classes, i));
     }
 
-    jvmtiError error = localJvmtiEnv->RetransformClasses(numTransformedClasses,
-                                                         transformedClasses);
+    jvmtiError error = registerClassFileLoadHook();
+    if (error == JVMTI_ERROR_NONE) {
+        error = localJvmtiEnv->RetransformClasses(numTransformedClasses,
+                                                  transformedClasses);
+
+        jvmtiError unregisterError = unregisterClassFileLoadHook();
+        if (error == JVMTI_ERROR_NONE && unregisterError != JVMTI_ERROR_NONE) {
+            error = unregisterError;
+        }
+    }
 
     for (int i = 0; i < numTransformedClasses; i++) {
         env->DeleteGlobalRef(transformedClasses[i]);

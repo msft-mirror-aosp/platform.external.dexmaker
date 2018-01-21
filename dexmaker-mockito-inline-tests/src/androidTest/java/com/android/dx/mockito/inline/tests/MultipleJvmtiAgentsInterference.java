@@ -19,6 +19,7 @@ package com.android.dx.mockito.inline.tests;
 import android.os.Build;
 
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -33,6 +34,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.mock;
 
+@Ignore("Leaving the transformation hook enabled causes a lot of unnecessary transformations. " +
+        "This is too expensive. Hence for now, we cannot support multiple agents")
 public class MultipleJvmtiAgentsInterference {
     private static final String AGENT_LIB_NAME = "multiplejvmtiagentsinterferenceagent";
 
