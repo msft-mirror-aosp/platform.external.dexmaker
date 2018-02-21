@@ -40,6 +40,7 @@ include $(BUILD_STATIC_JAVA_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE_TAGS := tests
 LOCAL_PACKAGE_NAME := DexmakerTests
+LOCAL_SDK_VERSION := current
 LOCAL_STATIC_JAVA_LIBRARIES := \
         dexmaker-tests
 
