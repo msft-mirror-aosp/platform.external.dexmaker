@@ -81,6 +81,8 @@ cc_defaults {
     // As an NDK-based library we cannot depend on libopenjdkjvmti_headers.
     include_dirs: [
         "art/openjdkjvmti/include",
+        // TODO Remove once upstream has updated to new slicer.
+        "tools/dexter/slicer/export/slicer",
     ],
 }
 
