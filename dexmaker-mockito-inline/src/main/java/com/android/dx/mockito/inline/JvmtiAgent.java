@@ -17,14 +17,13 @@
 package com.android.dx.mockito.inline;
 
 import android.os.Build;
+import android.os.Debug;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.InvocationTargetException;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 
@@ -57,37 +56,13 @@ class JvmtiAgent {
             throw new IOException("Requires Android P. Build is " + Build.VERSION.CODENAME);
         }
 
-        Throwable loadJvmtiException = null;
-
         ClassLoader cl = JvmtiAgent.class.getClassLoader();
         if (!(cl instanceof BaseDexClassLoader)) {
             throw new IOException("Could not load jvmti plugin as JvmtiAgent class was not loaded "
                     + "by a BaseDexClassLoader");
         }
 
-        try {
-            /*
-             * TODO (moltmann@google.com): Replace with regular method call once the API becomes
-             *                             public
-             */
-            Class.forName("android.os.Debug").getMethod("attachJvmtiAgent", String.class,
-                    String.class, ClassLoader.class).invoke(null, AGENT_LIB_NAME,
-                    null, cl);
-        } catch (InvocationTargetException e) {
-            loadJvmtiException = e.getCause();
-        } catch (IllegalAccessException | ClassNotFoundException | NoSuchMethodException e) {
-            loadJvmtiException = e;
-        }
-
-        if (loadJvmtiException != null) {
-            if (loadJvmtiException instanceof IOException) {
-                throw new IOException(cl.toString(), loadJvmtiException);
-            } else {
-                throw new IOException("Could not load jvmti plugin",
-                        loadJvmtiException);
-            }
-        }
-
+        Debug.attachJvmtiAgent(AGENT_LIB_NAME, null, cl);
         nativeRegisterTransformerHook();
     }
 
@@ -143,6 +118,18 @@ class JvmtiAgent {
                 throw new UnmodifiableClassException(e);
             }
         }
+    }
+
+    // called by JNI
+    @SuppressWarnings("unused")
+    public boolean shouldTransform(Class<?> classBeingRedefined) {
+        for (ClassTransformer transformer : transformers) {
+            if (transformer.shouldTransform(classBeingRedefined)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
