@@ -52,7 +52,7 @@ class JvmtiAgent {
      */
     JvmtiAgent() throws IOException {
         // TODO (moltmann@google.com): Replace with proper check for >= P
-        if (!Build.VERSION.CODENAME.equals("P")) {
+        if (!(Build.VERSION.CODENAME.equals("P") || Build.VERSION.CODENAME.equals("Q"))) {
             throw new IOException("Requires Android P. Build is " + Build.VERSION.CODENAME);
         }
 
