@@ -41,7 +41,7 @@ java_library_static {
 // Build dispatcher for Dexmaker's inline MockMaker
 java_library_static {
     name: "dexmaker-inline-mockmaker-dispatcher",
-    sdk_version: "25",
+    sdk_version: "current",
     srcs: ["dexmaker-mockito-inline-dispatcher/src/main/java/**/*.java"],
 }
 
@@ -107,7 +107,7 @@ cc_library_shared {
 // Build Dexmaker's inline MockMaker, a plugin to Mockito
 java_library_static {
     name: "dexmaker-inline-mockmaker",
-    sdk_version: "25",
+    sdk_version: "current",
     srcs: ["dexmaker-mockito-inline/src/main/java/**/*.java"],
     java_resource_dirs: ["dexmaker-mockito-inline/src/main/resources"],
     libs: [
@@ -115,6 +115,12 @@ java_library_static {
         "mockito-api",
     ],
     required: ["libdexmakerjvmtiagent"],
+
+    errorprone: {
+        javacflags: [
+            "-Xep:CollectionIncompatibleType:WARN"
+        ],
+    }
 }
 
 java_import {
