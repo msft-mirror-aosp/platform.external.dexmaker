@@ -51,9 +51,8 @@ class JvmtiAgent {
      * @throws IOException If jvmti could not be enabled or agent could not be loaded
      */
     JvmtiAgent() throws IOException {
-        // TODO (moltmann@google.com): Replace with proper check for >= P
-        if (!Build.VERSION.CODENAME.equals("P")) {
-            throw new IOException("Requires Android P. Build is " + Build.VERSION.CODENAME);
+        if (Build.VERSION.SDK_INT < 28) {
+            throw new IOException("Requires API 28. API is " + Build.VERSION.SDK_INT);
         }
 
         ClassLoader cl = JvmtiAgent.class.getClassLoader();
