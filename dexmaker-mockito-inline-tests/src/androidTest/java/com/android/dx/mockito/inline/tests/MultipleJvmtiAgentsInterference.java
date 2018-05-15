@@ -38,8 +38,7 @@ public class MultipleJvmtiAgentsInterference {
 
     @BeforeClass
     public static void installTestAgent() throws Exception {
-        // TODO (moltmann@google.com): Replace with proper check for >= P
-        assumeTrue(Build.VERSION.CODENAME.equals("P"));
+        assumeTrue(Build.VERSION.SDK_INT >= 28);
 
         Debug.attachJvmtiAgent(AGENT_LIB_NAME, null,
                 MultipleJvmtiAgentsInterference.class.getClassLoader());
