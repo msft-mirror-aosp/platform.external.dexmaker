@@ -47,6 +47,8 @@ import static java.lang.reflect.Modifier.PRIVATE;
 import static java.lang.reflect.Modifier.PUBLIC;
 import static java.lang.reflect.Modifier.STATIC;
 
+import android.os.Build;
+
 /**
  * Creates dynamic proxies of concrete classes.
  * <p>
@@ -300,6 +302,18 @@ public final class ProxyBuilder<T> {
         dexMaker.declare(generatedType, generatedName + ".generated", PUBLIC, superType, getInterfacesAsTypeIds());
         if (sharedClassLoader) {
             dexMaker.setSharedClassLoader(baseClass.getClassLoader());
+        }
+        if (Build.VERSION.SDK_INT >= 28) {
+            // The proxied class might have blacklisted methods. Blacklisting methods (and fields)
+            // is a new feature of Android P:
+            //
+            // https://android-developers.googleblog.com/2018/02/
+            // improving-stability-by-reducing-usage.html
+            //
+            // The newly generated class might not be allowed to call methods of the proxied class
+            // if it is not trusted. As it is not clear which classes have blacklisted methods, mark
+            // all generated classes as trusted.
+            dexMaker.markAsTrusted();
         }
         ClassLoader classLoader = dexMaker.generateAndLoad(parentClassLoader, dexCache);
         try {
