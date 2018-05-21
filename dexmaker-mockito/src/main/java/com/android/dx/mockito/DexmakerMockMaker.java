@@ -55,9 +55,15 @@ public final class DexmakerMockMaker implements MockMaker, StackTraceCleanerProv
         } else {
             // support concrete classes via dexmaker's ProxyBuilder
             try {
-                Class<? extends T> proxyClass = ProxyBuilder.forClass(typeToMock)
-                        .implementing(extraInterfaces)
-                        .buildProxyClass();
+                ProxyBuilder b = ProxyBuilder.forClass(typeToMock)
+                        .implementing(extraInterfaces);
+
+                if (Boolean.parseBoolean(
+                        System.getProperty("dexmaker.share_classloader", "false"))) {
+                    b.withSharedClassLoader();
+                }
+
+                Class<? extends T> proxyClass = b.buildProxyClass();
                 T mock = unsafeAllocator.newInstance(proxyClass);
                 ProxyBuilder.setInvocationHandler(mock, invocationHandler);
                 return mock;
@@ -109,12 +115,15 @@ public final class DexmakerMockMaker implements MockMaker, StackTraceCleanerProv
         return new StackTraceCleaner() {
             @Override
             public boolean isIn(StackTraceElement candidate) {
+                String className = candidate.getClassName();
+
                 return defaultCleaner.isIn(candidate)
-                        && !candidate.getClassName().endsWith("_Proxy") // dexmaker class proxies
-                        && !candidate.getClassName().startsWith("$Proxy") // dalvik interface proxies
-                        && !candidate.getClassName().startsWith("java.lang.reflect.Proxy")
-                        && !candidate.getClassName().startsWith("com.google.dexmaker.mockito.")
-                        && !candidate.getClassName().startsWith("com.android.dx.mockito.");
+                        && !className.endsWith("_Proxy") // dexmaker class proxies
+                        && !className.startsWith("$Proxy") // dalvik interface proxies
+                        && !className.startsWith("java.lang.reflect.Proxy")
+                        && !(className.startsWith("com.android.dx.mockito.")
+                             // Do not clean unit tests
+                             && !className.startsWith("com.android.dx.mockito.tests"));
             }
         };
     }
