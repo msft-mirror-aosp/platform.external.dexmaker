@@ -140,6 +140,8 @@ public final class ProxyBuilder<T> {
     private Class<?>[] constructorArgTypes = new Class[0];
     private Object[] constructorArgValues = new Object[0];
     private Set<Class<?>> interfaces = new HashSet<>();
+    private Method[] methods;
+    private boolean sharedClassLoader;
 
     private ProxyBuilder(Class<T> clazz) {
         baseClass = clazz;
@@ -192,6 +194,16 @@ public final class ProxyBuilder<T> {
 
     public ProxyBuilder<T> constructorArgTypes(Class<?>... constructorArgTypes) {
         this.constructorArgTypes = constructorArgTypes;
+        return this;
+    }
+
+    public ProxyBuilder<T> onlyMethods(Method[] methods) {
+        this.methods = methods;
+        return this;
+    }
+
+    public ProxyBuilder<T> withSharedClassLoader() {
+        this.sharedClassLoader = true;
         return this;
     }
 
@@ -249,12 +261,10 @@ public final class ProxyBuilder<T> {
         @SuppressWarnings("unchecked")
         Class<? extends T> proxyClass = (Class) generatedProxyClasses.get(baseClass);
         if (proxyClass != null) {
-            boolean shareClassLoader = Boolean.parseBoolean(System.getProperty(
-                        "dexmaker.share_classloader", "false"));
             boolean validClassLoader;
-            if (shareClassLoader) {
-                ClassLoader parent = parentClassLoader != null ? parentClassLoader
-                        : baseClass.getClassLoader();
+            if (sharedClassLoader) {
+                ClassLoader parent = parentClassLoader != null ? parentClassLoader : baseClass
+                        .getClassLoader();
                 validClassLoader = proxyClass.getClassLoader() == parent;
             } else {
                 validClassLoader = proxyClass.getClassLoader().getParent() == parentClassLoader;
@@ -270,11 +280,28 @@ public final class ProxyBuilder<T> {
         TypeId<? extends T> generatedType = TypeId.get("L" + generatedName + ";");
         TypeId<T> superType = TypeId.get(baseClass);
         generateConstructorsAndFields(dexMaker, generatedType, superType, baseClass);
-        Method[] methodsToProxy = getMethodsToProxyRecursive();
+
+        Method[] methodsToProxy;
+        if (methods == null) {
+            methodsToProxy = getMethodsToProxyRecursive();
+        } else {
+            methodsToProxy = methods;
+        }
+
+        // Sort the results array so that they are in a deterministic fashion.
+        Arrays.sort(methodsToProxy, new Comparator<Method>() {
+            @Override
+            public int compare(Method method1, Method method2) {
+                return method1.toString().compareTo(method2.toString());
+            }
+        });
+
         generateCodeForAllMethods(dexMaker, generatedType, methodsToProxy, superType);
         dexMaker.declare(generatedType, generatedName + ".generated", PUBLIC, superType, getInterfacesAsTypeIds());
-        ClassLoader classLoader = dexMaker.generateAndLoad(baseClass.getClassLoader(),
-                parentClassLoader, dexCache);
+        if (sharedClassLoader) {
+            dexMaker.setSharedClassLoader(baseClass.getClassLoader());
+        }
+        ClassLoader classLoader = dexMaker.generateAndLoad(parentClassLoader, dexCache);
         try {
             proxyClass = loadClass(classLoader, generatedName);
         } catch (IllegalAccessError e) {
@@ -654,22 +681,11 @@ public final class ProxyBuilder<T> {
             results[i++] = entry.originalMethod;
         }
 
-        // Sort the results array so that they are returned by this method
-        // in a deterministic fashion.
-        Arrays.sort(results, new Comparator<Method>() {
-            @Override
-            public int compare(Method method1, Method method2) {
-                return method1.toString().compareTo(method2.toString());
-            }
-        });
-
         return results;
     }
 
     private void getMethodsToProxy(Set<MethodSetEntry> sink, Set<MethodSetEntry> seenFinalMethods,
             Class<?> c) {
-        boolean shareClassLoader = Boolean.parseBoolean(System.getProperty(
-               "dexmaker.share_classloader", "false"));
         for (Method method : c.getDeclaredMethods()) {
             if ((method.getModifiers() & Modifier.FINAL) != 0) {
                 // Skip final methods, we can't override them. We
@@ -687,8 +703,8 @@ public final class ProxyBuilder<T> {
                 continue;
             }
             if (!Modifier.isPublic(method.getModifiers())
-					&& !Modifier.isProtected(method.getModifiers())
-                    && (!shareClassLoader || Modifier.isPrivate(method.getModifiers()))) {
+                    && !Modifier.isProtected(method.getModifiers())
+                    && (!sharedClassLoader || Modifier.isPrivate(method.getModifiers()))) {
                 // Skip private methods, since they are invoked through direct
                 // invocation (as opposed to virtual). Therefore, it would not
                 // be possible to intercept any private method defined inside
@@ -820,11 +836,11 @@ public final class ProxyBuilder<T> {
      * another. For these purposes, we consider two methods to be equal if they have the same
      * name, return type, and parameter types.
      */
-    private static class MethodSetEntry {
-        private final String name;
-        private final Class<?>[] paramTypes;
-        private final Class<?> returnType;
-        private final Method originalMethod;
+    public static class MethodSetEntry {
+        public final String name;
+        public final Class<?>[] paramTypes;
+        public final Class<?> returnType;
+        public final Method originalMethod;
 
         public MethodSetEntry(Method method) {
             originalMethod = method;
