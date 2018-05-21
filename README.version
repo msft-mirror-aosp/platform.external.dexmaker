@@ -11,4 +11,3 @@ It includes a stock code generator for class proxies. If you just want to do AOP
 Local Modifications:
         Allow to share classloader via dexmaker.share_classloader system property (I8c2490c3ec8e8582dc41c486f8f7a406bd635ebb)
 	Allow 'Q' until we can replace the version check with a number based check
-        Mark mocks as trusted (needs upstreaming)
