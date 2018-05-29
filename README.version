@@ -10,3 +10,4 @@ It includes a stock code generator for class proxies. If you just want to do AOP
 
 Local Modifications:
         Mark mocks as trusted (needs upstreaming, Ib74f94fa36b24259d70605293cf63ea9cb875b9a)
+        Allow to share classloader via dexmaker.share_classloader system property (I5632c8587c795ac33a71ce041a2494278cdbd51f)

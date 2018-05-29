@@ -95,9 +95,15 @@ public final class DexmakerMockMaker implements MockMaker, StackTraceCleanerProv
         } else {
             // support concrete classes via dexmaker's ProxyBuilder
             try {
-                Class<? extends T> proxyClass = ProxyBuilder.forClass(typeToMock)
-                        .implementing(extraInterfaces)
-                        .buildProxyClass();
+                ProxyBuilder b = ProxyBuilder.forClass(typeToMock)
+                        .implementing(extraInterfaces);
+
+                if (Boolean.parseBoolean(
+                        System.getProperty("dexmaker.share_classloader", "false"))) {
+                    b.withSharedClassLoader();
+                }
+
+                Class<? extends T> proxyClass = b.buildProxyClass();
                 T mock = unsafeAllocator.newInstance(proxyClass);
                 ProxyBuilder.setInvocationHandler(mock, invocationHandler);
                 return mock;
