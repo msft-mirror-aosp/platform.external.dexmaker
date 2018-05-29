@@ -24,12 +24,11 @@ import com.android.dx.stock.ProxyBuilder;
 import com.android.dx.stock.ProxyBuilder.MethodSetEntry;
 
 import org.mockito.Mockito;
+import org.mockito.creation.instance.Instantiator;
 import org.mockito.exceptions.base.MockitoException;
-import org.mockito.internal.creation.instance.Instantiator;
-import org.mockito.internal.util.reflection.LenientCopyTool;
 import org.mockito.invocation.MockHandler;
 import org.mockito.mock.MockCreationSettings;
-import org.mockito.plugins.InstantiatorProvider;
+import org.mockito.plugins.InstantiatorProvider2;
 import org.mockito.plugins.MockMaker;
 
 import java.io.IOException;
@@ -37,7 +36,6 @@ import java.io.InputStream;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
@@ -53,6 +51,7 @@ import java.util.Set;
  *
  * <p>This is done by transforming the byte code of the classes to add method entry hooks.
  */
+
 public final class InlineDexmakerMockMaker implements MockMaker {
     private static final String DISPATCHER_CLASS_NAME =
             "com.android.dx.mockito.inline.MockMethodDispatcher";
@@ -68,7 +67,13 @@ public final class InlineDexmakerMockMaker implements MockMaker {
      * Class injected into the bootstrap classloader. All entry hooks added to methods will call
      * this class.
      */
-    private static final Class DISPATCHER_CLASS;
+    public static final Class DISPATCHER_CLASS;
+
+    /**
+     * {@code ExtendedMockito#spyOn} allows to turn an existing object into a spy. If this operation
+     * is running this field is set to the object that should become a spy.
+     */
+    public static ThreadLocal<Object> onSpyInProgressInstance = new ThreadLocal<>();
 
     /*
      * One time setup to allow the system to mocking via this mock maker.
@@ -107,40 +112,6 @@ public final class InlineDexmakerMockMaker implements MockMaker {
                         + "I/O error during the creation of this agent: " + ioe + "\n\n"
                         + "Potentially, the current VM does not support the jvmti API correctly",
                         ioe);
-            }
-
-            // Blacklisted APIs were introduced in Android P:
-            //
-            // https://android-developers.googleblog.com/2018/02/
-            // improving-stability-by-reducing-usage.html
-            //
-            // This feature prevents access to blacklisted fields and calling of blacklisted APIs
-            // if the calling class is not trusted.
-            Method allowHiddenApiReflectionFrom;
-            try {
-                Class vmDebug = Class.forName("dalvik.system.VMDebug");
-                allowHiddenApiReflectionFrom = vmDebug.getDeclaredMethod(
-                        "allowHiddenApiReflectionFrom", Class.class);
-            } catch (ClassNotFoundException | NoSuchMethodException e) {
-                throw new IllegalStateException("Cannot find "
-                        + "VMDebug#allowHiddenApiReflectionFrom.");
-            }
-
-            // The LenientCopyTool copies the fields to a spy when creating the copy from an
-            // existing object. Some of the fields might be blacklisted. Marking the LenientCopyTool
-            // as trusted allows the tool to copy all fields, including the blacklisted ones.
-            try {
-                allowHiddenApiReflectionFrom.invoke(null, LenientCopyTool.class);
-            } catch (InvocationTargetException e) {
-                throw e.getCause();
-            }
-
-            // The MockMethodAdvice is used by methods of spies to call the real methods. As the
-            // real methods might be blacklisted, this class needs to be marked as trusted.
-            try {
-                allowHiddenApiReflectionFrom.invoke(null, MockMethodAdvice.class);
-            } catch (InvocationTargetException e) {
-                throw e.getCause();
             }
         } catch (Throwable throwable) {
             agent = null;
@@ -260,7 +231,7 @@ public final class InlineDexmakerMockMaker implements MockMaker {
             Class<? extends T> proxyClass;
 
             Instantiator instantiator = Mockito.framework().getPlugins()
-                    .getDefaultPlugin(InstantiatorProvider.class).getInstantiator(settings);
+                    .getDefaultPlugin(InstantiatorProvider2.class).getInstantiator(settings);
 
             if (subclassingRequired) {
                 try {
@@ -276,18 +247,23 @@ public final class InlineDexmakerMockMaker implements MockMaker {
 
                 try {
                     mock = instantiator.newInstance(proxyClass);
-                } catch (org.mockito.internal.creation.instance.InstantiationException e) {
+                } catch (org.mockito.creation.instance.InstantiationException e) {
                     throw new MockitoException("Unable to create mock instance of type '"
                             + proxyClass.getSuperclass().getSimpleName() + "'", e);
                 }
 
                 ProxyBuilder.setInvocationHandler(mock, handlerAdapter);
             } else {
-                try {
-                    mock = instantiator.newInstance(typeToMock);
-                } catch (org.mockito.internal.creation.instance.InstantiationException e) {
-                    throw new MockitoException("Unable to create mock instance of type '"
-                            + typeToMock.getSimpleName() + "'", e);
+                if (settings.getSpiedInstance() != null
+                        && onSpyInProgressInstance.get() == settings.getSpiedInstance()) {
+                    mock = (T) onSpyInProgressInstance.get();
+                } else {
+                    try {
+                        mock = instantiator.newInstance(typeToMock);
+                    } catch (org.mockito.creation.instance.InstantiationException e) {
+                        throw new MockitoException("Unable to create mock instance of type '"
+                                + typeToMock.getSimpleName() + "'", e);
+                    }
                 }
             }
         }
@@ -358,7 +334,7 @@ public final class InlineDexmakerMockMaker implements MockMaker {
         private static final int MAX_GET_WITHOUT_CLEAN = 16384;
 
         private final Object lock = new Object();
-        private static StrongKey cachedKey;
+        private StrongKey cachedKey;
 
         private HashMap<WeakKey, InvocationHandlerAdapter> adapters = new HashMap<>();
 
@@ -424,6 +400,7 @@ public final class InlineDexmakerMockMaker implements MockMaker {
             return adapters.isEmpty();
         }
 
+        @SuppressWarnings("CollectionIncompatibleType")
         @Override
         public boolean containsKey(Object mock) {
             synchronized (lock) {
@@ -442,6 +419,7 @@ public final class InlineDexmakerMockMaker implements MockMaker {
             }
         }
 
+        @SuppressWarnings("CollectionIncompatibleType")
         @Override
         public InvocationHandlerAdapter get(Object mock) {
             synchronized (lock) {
@@ -504,6 +482,7 @@ public final class InlineDexmakerMockMaker implements MockMaker {
             }
         }
 
+        @SuppressWarnings("CollectionIncompatibleType")
         @Override
         public InvocationHandlerAdapter remove(Object mock) {
             synchronized (lock) {

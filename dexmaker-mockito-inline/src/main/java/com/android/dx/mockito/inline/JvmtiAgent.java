@@ -18,6 +18,7 @@ package com.android.dx.mockito.inline;
 
 import android.os.Build;
 import android.os.Debug;
+import android.support.v4.os.BuildCompat;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -51,10 +52,9 @@ class JvmtiAgent {
      * @throws IOException If jvmti could not be enabled or agent could not be loaded
      */
     JvmtiAgent() throws IOException {
-         if (Build.VERSION.SDK_INT < 28) {
-             throw new IOException("Requires API 28. API is " + Build.VERSION.SDK_INT);
-         }
-
+        if (!BuildCompat.isAtLeastP()) {
+            throw new IOException("Requires Android P. Build is " + Build.VERSION.CODENAME);
+        }
 
         ClassLoader cl = JvmtiAgent.class.getClassLoader();
         if (!(cl instanceof BaseDexClassLoader)) {
