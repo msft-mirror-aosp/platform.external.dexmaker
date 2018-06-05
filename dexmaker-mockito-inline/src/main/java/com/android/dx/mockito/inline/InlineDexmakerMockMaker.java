@@ -24,12 +24,12 @@ import com.android.dx.stock.ProxyBuilder;
 import com.android.dx.stock.ProxyBuilder.MethodSetEntry;
 
 import org.mockito.Mockito;
-import org.mockito.creation.instance.Instantiator;
 import org.mockito.exceptions.base.MockitoException;
+import org.mockito.internal.creation.instance.Instantiator;
 import org.mockito.internal.util.reflection.LenientCopyTool;
 import org.mockito.invocation.MockHandler;
 import org.mockito.mock.MockCreationSettings;
-import org.mockito.plugins.InstantiatorProvider2;
+import org.mockito.plugins.InstantiatorProvider;
 import org.mockito.plugins.MockMaker;
 
 import java.io.IOException;
@@ -53,7 +53,6 @@ import java.util.Set;
  *
  * <p>This is done by transforming the byte code of the classes to add method entry hooks.
  */
-
 public final class InlineDexmakerMockMaker implements MockMaker {
     private static final String DISPATCHER_CLASS_NAME =
             "com.android.dx.mockito.inline.MockMethodDispatcher";
@@ -69,13 +68,7 @@ public final class InlineDexmakerMockMaker implements MockMaker {
      * Class injected into the bootstrap classloader. All entry hooks added to methods will call
      * this class.
      */
-    public static final Class DISPATCHER_CLASS;
-
-    /**
-     * {@code ExtendedMockito#spyOn} allows to turn an existing object into a spy. If this operation
-     * is running this field is set to the object that should become a spy.
-     */
-    public static ThreadLocal<Object> onSpyInProgressInstance = new ThreadLocal<>();
+    private static final Class DISPATCHER_CLASS;
 
     /*
      * One time setup to allow the system to mocking via this mock maker.
@@ -267,7 +260,7 @@ public final class InlineDexmakerMockMaker implements MockMaker {
             Class<? extends T> proxyClass;
 
             Instantiator instantiator = Mockito.framework().getPlugins()
-                    .getDefaultPlugin(InstantiatorProvider2.class).getInstantiator(settings);
+                    .getDefaultPlugin(InstantiatorProvider.class).getInstantiator(settings);
 
             if (subclassingRequired) {
                 try {
@@ -283,23 +276,18 @@ public final class InlineDexmakerMockMaker implements MockMaker {
 
                 try {
                     mock = instantiator.newInstance(proxyClass);
-                } catch (org.mockito.creation.instance.InstantiationException e) {
+                } catch (org.mockito.internal.creation.instance.InstantiationException e) {
                     throw new MockitoException("Unable to create mock instance of type '"
                             + proxyClass.getSuperclass().getSimpleName() + "'", e);
                 }
 
                 ProxyBuilder.setInvocationHandler(mock, handlerAdapter);
             } else {
-                if (settings.getSpiedInstance() != null
-                        && onSpyInProgressInstance.get() == settings.getSpiedInstance()) {
-                    mock = (T) onSpyInProgressInstance.get();
-                } else {
-                    try {
-                        mock = instantiator.newInstance(typeToMock);
-                    } catch (org.mockito.creation.instance.InstantiationException e) {
-                        throw new MockitoException("Unable to create mock instance of type '"
-                                + typeToMock.getSimpleName() + "'", e);
-                    }
+                try {
+                    mock = instantiator.newInstance(typeToMock);
+                } catch (org.mockito.internal.creation.instance.InstantiationException e) {
+                    throw new MockitoException("Unable to create mock instance of type '"
+                            + typeToMock.getSimpleName() + "'", e);
                 }
             }
         }
@@ -370,7 +358,7 @@ public final class InlineDexmakerMockMaker implements MockMaker {
         private static final int MAX_GET_WITHOUT_CLEAN = 16384;
 
         private final Object lock = new Object();
-        private StrongKey cachedKey;
+        private static StrongKey cachedKey;
 
         private HashMap<WeakKey, InvocationHandlerAdapter> adapters = new HashMap<>();
 
@@ -436,7 +424,6 @@ public final class InlineDexmakerMockMaker implements MockMaker {
             return adapters.isEmpty();
         }
 
-        @SuppressWarnings("CollectionIncompatibleType")
         @Override
         public boolean containsKey(Object mock) {
             synchronized (lock) {
@@ -455,7 +442,6 @@ public final class InlineDexmakerMockMaker implements MockMaker {
             }
         }
 
-        @SuppressWarnings("CollectionIncompatibleType")
         @Override
         public InvocationHandlerAdapter get(Object mock) {
             synchronized (lock) {
@@ -518,7 +504,6 @@ public final class InlineDexmakerMockMaker implements MockMaker {
             }
         }
 
-        @SuppressWarnings("CollectionIncompatibleType")
         @Override
         public InvocationHandlerAdapter remove(Object mock) {
             synchronized (lock) {

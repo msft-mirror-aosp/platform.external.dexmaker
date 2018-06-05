@@ -135,7 +135,7 @@ public final class DexMakerTest {
         addDefaultConstructor();
 
         Class<?> generatedClass = generateAndLoad();
-        Object instance = generatedClass.getDeclaredConstructor().newInstance();
+        Object instance = generatedClass.newInstance();
         Method method = generatedClass.getMethod("call");
         method.invoke(instance);
     }
@@ -177,7 +177,7 @@ public final class DexMakerTest {
         addDefaultConstructor();
 
         Class<?> generatedClass = generateAndLoad();
-        Object instance = generatedClass.getDeclaredConstructor().newInstance();
+        Object instance = generatedClass.newInstance();
         Method method = generatedClass.getMethod("call", int.class);
         method.invoke(instance, 0);
     }
@@ -244,7 +244,7 @@ public final class DexMakerTest {
         addDefaultConstructor();
 
         Class<?> generatedClass = generateAndLoad();
-        Object instance = generatedClass.getDeclaredConstructor().newInstance();
+        Object instance = generatedClass.newInstance();
         Method method = generatedClass.getMethod("call", generatedClass);
         assertEquals(5, method.invoke(null, instance));
     }
@@ -278,7 +278,7 @@ public final class DexMakerTest {
         addDefaultConstructor();
 
         Class<?> generatedClass = generateAndLoad();
-        Object instance = generatedClass.getDeclaredConstructor().newInstance();
+        Object instance = generatedClass.newInstance();
         Method method = generatedClass.getMethod("superHashCode");
         assertEquals(System.identityHashCode(instance), method.invoke(instance));
     }
@@ -299,7 +299,6 @@ public final class DexMakerTest {
         code.returnValue(localResult);
 
         Callable<Object> callable = new Callable<Object>() {
-            @Override
             public Object call() throws Exception {
                 return "abc";
             }
@@ -426,7 +425,7 @@ public final class DexMakerTest {
         addDefaultConstructor();
 
         Class<?> generatedClass = generateAndLoad();
-        Object instance = generatedClass.getDeclaredConstructor().newInstance();
+        Object instance = generatedClass.newInstance();
 
         Field a = generatedClass.getField("a");
         assertEquals(int.class, a.getType());
@@ -692,7 +691,6 @@ public final class DexMakerTest {
     }
 
     @Test
-    @SuppressWarnings("FloatingPointLiteralPrecision")
     public void testCastFloatingPointToInteger() throws Exception {
         Method floatToInt = numericCastingMethod(float.class, int.class);
         assertEquals(0, floatToInt.invoke(null, 0.0f));
@@ -1048,7 +1046,7 @@ public final class DexMakerTest {
         assertEquals((short) 0x1234, instance.shortValue);
     }
 
-    public static class Instance {
+    public class Instance {
         public int intValue;
         public long longValue;
         public float floatValue;
@@ -1873,7 +1871,7 @@ public final class DexMakerTest {
         addDefaultConstructor();
 
         Class<?> generatedClass = generateAndLoad();
-        Object instance = generatedClass.getDeclaredConstructor().newInstance();
+        Object instance = generatedClass.newInstance();
         Method method = generatedClass.getMethod("call");
         assertTrue(Modifier.isSynchronized(method.getModifiers()));
         try {
@@ -1907,7 +1905,7 @@ public final class DexMakerTest {
         addDefaultConstructor();
 
         Class<?> generatedClass = generateAndLoad();
-        Object instance = generatedClass.getDeclaredConstructor().newInstance();
+        Object instance = generatedClass.newInstance();
         Method method = generatedClass.getMethod("call");
         assertFalse(Modifier.isSynchronized(method.getModifiers()));
         method.invoke(instance); // will take 100ms
@@ -2123,7 +2121,7 @@ public final class DexMakerTest {
         TypeId<IllegalStateException> iseType = TypeId.get(IllegalStateException.class);
         Local<IllegalStateException> localIse = code.newLocal(iseType);
         if (params.length > 0) {
-            if (params[0].equals(typeId)) {
+            if (params[0] == typeId) {
                 Local<?> localResult = code.getParameter(0, TypeId.INT);
                 code.returnValue(localResult);
             } else {
@@ -2190,7 +2188,6 @@ public final class DexMakerTest {
 
     private File[] getJarFiles() {
         return getDataDirectory().listFiles(new FilenameFilter() {
-            @Override
             public boolean accept(File dir, String name) {
                 return name.endsWith(".jar");
             }

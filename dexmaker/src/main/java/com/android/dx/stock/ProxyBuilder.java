@@ -43,7 +43,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-import static java.lang.reflect.Modifier.ABSTRACT;
 import static java.lang.reflect.Modifier.PRIVATE;
 import static java.lang.reflect.Modifier.PUBLIC;
 import static java.lang.reflect.Modifier.STATIC;
@@ -425,36 +424,6 @@ public final class ProxyBuilder<T> {
         }
     }
 
-    /**
-     * Add
-     *
-     * <pre>
-     *     abstractMethodErrorMessage = method + " cannot be called";
-     *     abstractMethodError = new AbstractMethodError(abstractMethodErrorMessage);
-     *     throw abstractMethodError;
-     * </pre>
-     *
-     * to the {@code code}.
-     *
-     * @param code The code to add to
-     * @param method The method that is abstract
-     * @param abstractMethodErrorMessage The {@link Local} to store the error message
-     * @param abstractMethodError The {@link Local} to store the error object
-     */
-    private static void throwAbstractMethodError(Code code, Method method,
-                                                 Local<String> abstractMethodErrorMessage,
-                                                 Local<AbstractMethodError> abstractMethodError) {
-        TypeId<AbstractMethodError> abstractMethodErrorClass = TypeId.get(AbstractMethodError.class);
-
-        MethodId<AbstractMethodError, Void> abstractMethodErrorConstructor =
-                abstractMethodErrorClass.getConstructor(TypeId.STRING);
-        code.loadConstant(abstractMethodErrorMessage, "'" + method + "' cannot be called");
-        code.newInstance(abstractMethodError, abstractMethodErrorConstructor,
-                abstractMethodErrorMessage);
-
-        code.throwValue(abstractMethodError);
-    }
-
     private static <T, G extends T> void generateCodeForAllMethods(DexMaker dexMaker,
             TypeId<G> generatedType, Method[] methodsToProxy, TypeId<T> superclassType) {
         TypeId<InvocationHandler> handlerType = TypeId.get(InvocationHandler.class);
@@ -476,22 +445,36 @@ public final class ProxyBuilder<T> {
              *         ...
              *     }
              *
-             * Then the following dex byte code will generate a method on the proxy that looks
-             * something like this (in idiomatic Java):
+             * Then the following code will generate a method on the proxy that looks something
+             * like this:
              *
-             *     // if doSomething is not abstract
+             *     public int doSomething(Bar param0, int param1) {
+             *         int methodIndex = 4;
+             *         Method[] allMethods = Example_Proxy.$__methodArray;
+             *         Method thisMethod = allMethods[methodIndex];
+             *         int argsLength = 2;
+             *         Object[] args = new Object[argsLength];
+             *         InvocationHandler localHandler = this.$__handler;
+             *         // for-loop begins
+             *         int p = 0;
+             *         Bar parameter0 = param0;
+             *         args[p] = parameter0;
+             *         p = 1;
+             *         int parameter1 = param1;
+             *         Integer boxed1 = Integer.valueOf(parameter1);
+             *         args[p] = boxed1;
+             *         // for-loop ends
+             *         Object result = localHandler.invoke(this, thisMethod, args);
+             *         Integer castResult = (Integer) result;
+             *         int unboxedResult = castResult.intValue();
+             *         return unboxedResult;
+             *     }
+             *
+             * Or, in more idiomatic Java:
+             *
              *     public int doSomething(Bar param0, int param1) {
              *         if ($__handler == null) {
              *             return super.doSomething(param0, param1);
-             *         }
-             *         return __handler.invoke(this, __methodArray[4],
-             *                 new Object[] { param0, Integer.valueOf(param1) });
-             *     }
-             *
-             *     // if doSomething is abstract
-             *     public int doSomething(Bar param0, int param1) {
-             *         if ($__handler == null) {
-             *             throw new AbstractMethodError("'doSomething' cannot be called");
              *         }
              *         return __handler.invoke(this, __methodArray[4],
              *                 new Object[] { param0, Integer.valueOf(param1) });
@@ -506,9 +489,8 @@ public final class ProxyBuilder<T> {
             }
             Class<?> returnType = method.getReturnType();
             TypeId<?> resultType = TypeId.get(returnType);
+            MethodId<T, ?> superMethod = superclassType.getMethod(resultType, name, argTypes);
             MethodId<?, ?> methodId = generatedType.getMethod(resultType, name, argTypes);
-            TypeId<AbstractMethodError> abstractMethodErrorClass =
-                    TypeId.get(AbstractMethodError.class);
             Code code = dexMaker.declare(methodId, PUBLIC);
             Local<G> localThis = code.getThis(generatedType);
             Local<InvocationHandler> localHandler = code.newLocal(handlerType);
@@ -526,21 +508,9 @@ public final class ProxyBuilder<T> {
             if (aBoxedClass != null) {
                 aBoxedResult = code.newLocal(TypeId.get(aBoxedClass));
             }
+            Local<?>[] superArgs2 = new Local<?>[argClasses.length];
+            Local<?> superResult2 = code.newLocal(resultType);
             Local<InvocationHandler> nullHandler = code.newLocal(handlerType);
-
-            Local<?>[] superArgs2 = null;
-            Local<?> superResult2 = null;
-            MethodId<T, ?> superMethod = null;
-            Local<String> abstractMethodErrorMessage = null;
-            Local<AbstractMethodError> abstractMethodError = null;
-            if ((method.getModifiers() & ABSTRACT) == 0) {
-                superArgs2 = new Local<?>[argClasses.length];
-                superResult2 = code.newLocal(resultType);
-                superMethod = superclassType.getMethod(resultType, name, argTypes);
-            } else {
-                abstractMethodErrorMessage = code.newLocal(TypeId.STRING);
-                abstractMethodError = code.newLocal(abstractMethodErrorClass);
-            }
 
             code.loadConstant(methodIndex, m);
             code.sget(allMethods, methodArray);
@@ -571,21 +541,15 @@ public final class ProxyBuilder<T> {
             // This is required to handle the case of construction of an object which leaks the
             // "this" pointer.
             code.mark(handlerNullCase);
-
-            if ((method.getModifiers() & ABSTRACT) == 0) {
-                for (int i = 0; i < superArgs2.length; ++i) {
-                    superArgs2[i] = code.getParameter(i, argTypes[i]);
-                }
-                if (void.class.equals(returnType)) {
-                    code.invokeSuper(superMethod, null, localThis, superArgs2);
-                    code.returnVoid();
-                } else {
-                    invokeSuper(superMethod, code, localThis, superArgs2, superResult2);
-                    code.returnValue(superResult2);
-                }
+            for (int i = 0; i < superArgs2.length; ++i) {
+                superArgs2[i] = code.getParameter(i, argTypes[i]);
+            }
+            if (void.class.equals(returnType)) {
+                code.invokeSuper(superMethod, null, localThis, superArgs2);
+                code.returnVoid();
             } else {
-                throwAbstractMethodError(code, method, abstractMethodErrorMessage,
-                        abstractMethodError);
+                invokeSuper(superMethod, code, localThis, superArgs2, superResult2);
+                code.returnValue(superResult2);
             }
 
             /*
@@ -596,29 +560,22 @@ public final class ProxyBuilder<T> {
              *          return result;
              *     }
              */
+            // TODO: don't include a super_ method if the target is abstract!
             MethodId<G, ?> callsSuperMethod = generatedType.getMethod(
                     resultType, superMethodName(method), argTypes);
             Code superCode = dexMaker.declare(callsSuperMethod, PUBLIC);
-            if ((method.getModifiers() & ABSTRACT) == 0) {
-                Local<G> superThis = superCode.getThis(generatedType);
-                Local<?>[] superArgs = new Local<?>[argClasses.length];
-                for (int i = 0; i < superArgs.length; ++i) {
-                    superArgs[i] = superCode.getParameter(i, argTypes[i]);
-                }
-                if (void.class.equals(returnType)) {
-                    superCode.invokeSuper(superMethod, null, superThis, superArgs);
-                    superCode.returnVoid();
-                } else {
-                    Local<?> superResult = superCode.newLocal(resultType);
-                    invokeSuper(superMethod, superCode, superThis, superArgs, superResult);
-                    superCode.returnValue(superResult);
-                }
+            Local<G> superThis = superCode.getThis(generatedType);
+            Local<?>[] superArgs = new Local<?>[argClasses.length];
+            for (int i = 0; i < superArgs.length; ++i) {
+                superArgs[i] = superCode.getParameter(i, argTypes[i]);
+            }
+            if (void.class.equals(returnType)) {
+                superCode.invokeSuper(superMethod, null, superThis, superArgs);
+                superCode.returnVoid();
             } else {
-                Local<String> superAbstractMethodErrorMessage = superCode.newLocal(TypeId.STRING);
-                Local<AbstractMethodError> superAbstractMethodError = superCode.newLocal
-                        (abstractMethodErrorClass);
-                throwAbstractMethodError(superCode, method, superAbstractMethodErrorMessage,
-                        superAbstractMethodError);
+                Local<?> superResult = superCode.newLocal(resultType);
+                invokeSuper(superMethod, superCode, superThis, superArgs, superResult);
+                superCode.returnValue(superResult);
             }
         }
     }
