@@ -17,24 +17,18 @@
 package com.android.dx.mockito.inline.tests;
 
 import android.os.Build;
+import android.os.Debug;
 
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
-
-import dalvik.system.BaseDexClassLoader;
 
 import static org.junit.Assert.assertNull;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.mock;
 
 public class MultipleJvmtiAgentsInterference {
-    private static final String AGENT_LIB_NAME = "multiplejvmtiagentsinterferenceagent";
+    private static final String AGENT_LIB_NAME = "libmultiplejvmtiagentsinterferenceagent.so";
 
     public class TestClass {
         public String returnA() {
@@ -44,32 +38,10 @@ public class MultipleJvmtiAgentsInterference {
 
     @BeforeClass
     public static void installTestAgent() throws Exception {
-        // TODO (moltmann@google.com): Replace with proper check for >= P
-        assumeTrue(Build.VERSION.CODENAME.equals("P"));
+        assumeTrue(Build.VERSION.SDK_INT >= 28);
 
-        // Currently Debug.attachJvmtiAgent requires a file in the right directory
-        File copiedAgent = File.createTempFile("testagent", ".so");
-        copiedAgent.deleteOnExit();
-
-        try (InputStream is = new FileInputStream(((BaseDexClassLoader)
-                MultipleJvmtiAgentsInterference.class.getClassLoader()).findLibrary
-                (AGENT_LIB_NAME))) {
-            try (OutputStream os = new FileOutputStream(copiedAgent)) {
-                byte[] buffer = new byte[64 * 1024];
-
-                while (true) {
-                    int numRead = is.read(buffer);
-                    if (numRead == -1) {
-                        break;
-                    }
-                    os.write(buffer, 0, numRead);
-                }
-            }
-        }
-
-        // TODO (moltmann@google.com): Replace with regular method call once the API becomes public
-        Class.forName("android.os.Debug").getMethod("attachJvmtiAgent", String.class, String
-                .class).invoke(null, copiedAgent.getAbsolutePath(), null);
+        Debug.attachJvmtiAgent(AGENT_LIB_NAME, null,
+                MultipleJvmtiAgentsInterference.class.getClassLoader());
     }
 
     @Test
@@ -87,5 +59,11 @@ public class MultipleJvmtiAgentsInterference {
         assertNull(t.returnA());
     }
 
+    @AfterClass
+    public static void DisableRetransfromHook() {
+        disableRetransformHook();
+    }
+
     private native int nativeRetransformClasses(Class<?>[] classes);
+    private static native int disableRetransformHook();
 }

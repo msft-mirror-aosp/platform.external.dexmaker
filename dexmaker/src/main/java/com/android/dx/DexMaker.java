@@ -49,6 +49,8 @@ import static com.android.dx.rop.code.AccessFlags.ACC_CONSTRUCTOR;
 import static java.lang.reflect.Modifier.PRIVATE;
 import static java.lang.reflect.Modifier.STATIC;
 
+import android.util.Log;
+
 /**
  * Generates a <strong>D</strong>alvik <strong>EX</strong>ecutable (dex)
  * file for execution on Android. Dex files define classes and interfaces,
@@ -196,8 +198,12 @@ import static java.lang.reflect.Modifier.STATIC;
  * }</pre>
  */
 public final class DexMaker {
+    private static final String LOG_TAG = DexMaker.class.getSimpleName();
+
     private final Map<TypeId<?>, TypeDeclaration> types = new LinkedHashMap<>();
     private ClassLoader sharedClassLoader;
+    private DexFile outputDex;
+    private boolean markAsTrusted;
 
     /**
      * Creates a new {@code DexMaker} instance, which can be used to create a
@@ -206,7 +212,7 @@ public final class DexMaker {
     public DexMaker() {
     }
 
-    private TypeDeclaration getTypeDeclaration(TypeId<?> type) {
+    TypeDeclaration getTypeDeclaration(TypeId<?> type) {
         TypeDeclaration result = types.get(type);
         if (result == null) {
             result = new TypeDeclaration(type);
@@ -313,9 +319,11 @@ public final class DexMaker {
      * Generates a dex file and returns its bytes.
      */
     public byte[] generate() {
-        DexOptions options = new DexOptions();
-        options.targetApiLevel = DexFormat.API_NO_EXTENDED_OPCODES;
-        DexFile outputDex = new DexFile(options);
+        if (outputDex == null) {
+            DexOptions options = new DexOptions();
+            options.targetApiLevel = DexFormat.API_NO_EXTENDED_OPCODES;
+            outputDex = new DexFile(options);
+        }
 
         for (TypeDeclaration typeDeclaration : types.values()) {
             outputDex.add(typeDeclaration.toClassDefItem());
@@ -356,12 +364,51 @@ public final class DexMaker {
         return "Generated_" + checksum +".jar";
     }
 
+    /**
+     * Set shared class loader to use.
+     *
+     * <p>If a class wants to call package private methods of another class they need to share a
+     * class loader. One common case for this requirement is a mock class wanting to mock package
+     * private methods of the original class.
+     *
+     * @param classLoader the class loader the new class should be loaded by
+     */
     public void setSharedClassLoader(ClassLoader classLoader) {
         this.sharedClassLoader = classLoader;
     }
 
+    public void markAsTrusted() {
+        this.markAsTrusted = true;
+    }
+
     private ClassLoader generateClassLoader(File result, File dexCache, ClassLoader parent) {
         try {
+            // Try to load the class so that it can call hidden APIs. This is required for spying
+            // on system classes as real-methods of these classes might call blacklisted APIs
+            if (markAsTrusted) {
+                try {
+                    if (sharedClassLoader != null) {
+                        ClassLoader loader = parent != null ? parent : sharedClassLoader;
+                        loader.getClass().getMethod("addDexPath", String.class,
+                                Boolean.TYPE).invoke(loader, result.getPath(), true);
+                        return loader;
+                    } else {
+                        return (ClassLoader) Class.forName("dalvik.system.BaseDexClassLoader")
+                                .getConstructor(String.class, File.class, String.class,
+                                        ClassLoader.class, Boolean.TYPE)
+                                .newInstance(result.getPath(), dexCache.getAbsoluteFile(), null,
+                                        parent, true);
+                    }
+                } catch (InvocationTargetException e) {
+                    if (e.getCause() instanceof SecurityException) {
+                        Log.i(LOG_TAG, "Cannot allow to call blacklisted super methods. This might "
+                                + "break spying on system classes.", e.getCause());
+                    } else {
+                        throw e;
+                    }
+                }
+            }
+
             if (sharedClassLoader != null) {
                 ClassLoader loader = parent != null ? parent : sharedClassLoader;
                 loader.getClass().getMethod("addDexPath", String.class).invoke(loader,
@@ -451,7 +498,16 @@ public final class DexMaker {
         return generateClassLoader(result, dexCache, parent);
     }
 
-    private static class TypeDeclaration {
+    DexFile getDexFile() {
+        if (outputDex == null) {
+            DexOptions options = new DexOptions();
+            options.targetApiLevel = DexFormat.API_NO_EXTENDED_OPCODES;
+            outputDex = new DexFile(options);
+        }
+        return outputDex;
+    }
+
+    static class TypeDeclaration {
         private final TypeId<?> type;
 
         /** declared state */
@@ -460,6 +516,7 @@ public final class DexMaker {
         private TypeId<?> supertype;
         private String sourceFile;
         private TypeList interfaces;
+        private ClassDefItem classDefItem;
 
         private final Map<FieldId, FieldDeclaration> fields = new LinkedHashMap<>();
         private final Map<MethodId, MethodDeclaration> methods = new LinkedHashMap<>();
@@ -479,27 +536,29 @@ public final class DexMaker {
 
             CstType thisType = type.constant;
 
-            ClassDefItem out = new ClassDefItem(thisType, flags, supertype.constant,
-                    interfaces.ropTypes, new CstString(sourceFile));
+            if (classDefItem == null) {
+                classDefItem = new ClassDefItem(thisType, flags, supertype.constant,
+                        interfaces.ropTypes, new CstString(sourceFile));
 
-            for (MethodDeclaration method : methods.values()) {
-                EncodedMethod encoded = method.toEncodedMethod(dexOptions);
-                if (method.isDirect()) {
-                    out.addDirectMethod(encoded);
-                } else {
-                    out.addVirtualMethod(encoded);
+                for (MethodDeclaration method : methods.values()) {
+                    EncodedMethod encoded = method.toEncodedMethod(dexOptions);
+                    if (method.isDirect()) {
+                        classDefItem.addDirectMethod(encoded);
+                    } else {
+                        classDefItem.addVirtualMethod(encoded);
+                    }
+                }
+                for (FieldDeclaration field : fields.values()) {
+                    EncodedField encoded = field.toEncodedField();
+                    if (field.isStatic()) {
+                        classDefItem.addStaticField(encoded, Constants.getConstant(field.staticValue));
+                    } else {
+                        classDefItem.addInstanceField(encoded);
+                    }
                 }
             }
-            for (FieldDeclaration field : fields.values()) {
-                EncodedField encoded = field.toEncodedField();
-                if (field.isStatic()) {
-                    out.addStaticField(encoded, Constants.getConstant(field.staticValue));
-                } else {
-                    out.addInstanceField(encoded);
-                }
-            }
 
-            return out;
+            return classDefItem;
         }
     }
 
