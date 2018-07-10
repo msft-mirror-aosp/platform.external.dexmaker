@@ -272,9 +272,15 @@ public final class InlineDexmakerMockMaker implements MockMaker {
             if (subclassingRequired) {
                 try {
                     // support abstract methods via dexmaker's ProxyBuilder
-                    proxyClass = ProxyBuilder.forClass(typeToMock).implementing(extraInterfaces)
-                            .onlyMethods(getMethodsToProxy(settings)).withSharedClassLoader()
-                            .buildProxyClass();
+                    ProxyBuilder builder = ProxyBuilder.forClass(typeToMock).implementing
+                            (extraInterfaces)
+                            .onlyMethods(getMethodsToProxy(settings)).withSharedClassLoader();
+
+                    if (Build.VERSION.SDK_INT >= 28) {
+                        builder.markTrusted();
+                    }
+
+                    proxyClass = builder.buildProxyClass();
                 } catch (RuntimeException e) {
                     throw e;
                 } catch (Exception e) {

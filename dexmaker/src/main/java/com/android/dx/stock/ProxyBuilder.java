@@ -48,8 +48,6 @@ import static java.lang.reflect.Modifier.PRIVATE;
 import static java.lang.reflect.Modifier.PUBLIC;
 import static java.lang.reflect.Modifier.STATIC;
 
-import android.os.Build;
-
 /**
  * Creates dynamic proxies of concrete classes.
  * <p>
@@ -145,6 +143,7 @@ public final class ProxyBuilder<T> {
     private Set<Class<?>> interfaces = new HashSet<>();
     private Method[] methods;
     private boolean sharedClassLoader;
+    private boolean markTrusted;
 
     private ProxyBuilder(Class<T> clazz) {
         baseClass = clazz;
@@ -207,6 +206,11 @@ public final class ProxyBuilder<T> {
 
     public ProxyBuilder<T> withSharedClassLoader() {
         this.sharedClassLoader = true;
+        return this;
+    }
+
+    public ProxyBuilder<T> markTrusted() {
+        this.markTrusted = true;
         return this;
     }
 
@@ -304,7 +308,7 @@ public final class ProxyBuilder<T> {
         if (sharedClassLoader) {
             dexMaker.setSharedClassLoader(baseClass.getClassLoader());
         }
-        if (Build.VERSION.SDK_INT >= 28) {
+        if (markTrusted) {
             // The proxied class might have blacklisted methods. Blacklisting methods (and fields)
             // is a new feature of Android P:
             //

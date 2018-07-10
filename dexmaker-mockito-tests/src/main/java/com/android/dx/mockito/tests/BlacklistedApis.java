@@ -23,16 +23,19 @@ import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.provider.Settings;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 import android.view.View;
 import android.widget.FrameLayout;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -41,6 +44,11 @@ import org.junit.runner.RunWith;
  */
 @RunWith(AndroidJUnit4.class)
 public class BlacklistedApis {
+    @Before
+    public void onlyRunOnPlatformsThatSupportBlacklisting() {
+        assumeTrue(Build.VERSION.SDK_INT >= 28);
+    }
+
     /**
      * Check if the application is marked as {@code android:debuggable} in the manifest
      *
@@ -84,6 +92,7 @@ public class BlacklistedApis {
 
     @Test
     public void copyBlacklistedFields() throws Exception {
+        // Can only copy blacklisted fields when debuggable
         assumeTrue(isDebuggable());
 
         Context targetContext = InstrumentationRegistry.getTargetContext();
@@ -105,6 +114,7 @@ public class BlacklistedApis {
         parent.measure(100, 100);
     }
 
+    @SuppressLint({"PrivateApi", "CheckReturnValue"})
     @Test
     public void cannotCallBlackListedAfterSpying() {
         // Spying and mocking might change the View class's byte code
@@ -120,8 +130,9 @@ public class BlacklistedApis {
         }
     }
 
-    public class CallBlackListedMethod {
-        public boolean callingBlacklistedMethodCausesException() {
+    public static class CallBlackListedMethod {
+        @SuppressLint("PrivateApi")
+        boolean callingBlacklistedMethodCausesException() {
             // Settings.Global#isValidZenMode is a blacklisted method. Resolving it should fail
             try {
                 Settings.Global.class.getDeclaredMethod("isValidZenMode", Integer.TYPE);
@@ -138,7 +149,8 @@ public class BlacklistedApis {
         assertTrue(t.callingBlacklistedMethodCausesException());
     }
 
-    public abstract class CallBlacklistedMethodAbstract {
+    public static abstract class CallBlacklistedMethodAbstract {
+        @SuppressLint("PrivateApi")
         public boolean callingBlacklistedMethodCausesException() {
             // Settings.Global#isValidZenMode is a blacklisted method. Resolving it should fail
             try {
