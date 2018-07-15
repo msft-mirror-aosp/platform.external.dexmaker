@@ -195,6 +195,17 @@ public class ExtendedMockito extends Mockito {
         return markers;
     }
 
+    /**
+     * Make an existing object a spy.
+     *
+     * <p>This does <u>not</u> clone the existing objects. If a method is stubbed on a spy
+     * converted by this method all references to the already existing object will be affected by
+     * the stubbing.
+     *
+     * @param toMock The existing object to convert into a spy
+     */
+    @UnstableApi
+    @SuppressWarnings("CheckReturnValue")
     public static void spyOn(Object toMock) {
         if (onSpyInProgressInstance.get() != null) {
             throw new IllegalStateException("Cannot set up spying on an existing object while "

@@ -49,8 +49,6 @@ import static com.android.dx.rop.code.AccessFlags.ACC_CONSTRUCTOR;
 import static java.lang.reflect.Modifier.PRIVATE;
 import static java.lang.reflect.Modifier.STATIC;
 
-import android.util.Log;
-
 /**
  * Generates a <strong>D</strong>alvik <strong>EX</strong>ecutable (dex)
  * file for execution on Android. Dex files define classes and interfaces,
@@ -198,9 +196,13 @@ import android.util.Log;
  * }</pre>
  */
 public final class DexMaker {
-    private static final String LOG_TAG = DexMaker.class.getSimpleName();
-
     private final Map<TypeId<?>, TypeDeclaration> types = new LinkedHashMap<>();
+
+    // Only warn about not being able to deal with blacklisted methods once. Often this is no
+    // problem and warning on every class load is too spammy.
+    private static boolean didWarnBlacklistedMethods;
+    private static boolean didWarnNonBaseDexClassLoader;
+
     private ClassLoader sharedClassLoader;
     private DexFile outputDex;
     private boolean markAsTrusted;
@@ -371,6 +373,9 @@ public final class DexMaker {
      * class loader. One common case for this requirement is a mock class wanting to mock package
      * private methods of the original class.
      *
+     * <p>If the classLoader is not a subclass of {@code dalvik.system.BaseDexClassLoader} this
+     * option is ignored.
+     *
      * @param classLoader the class loader the new class should be loaded by
      */
     public void setSharedClassLoader(ClassLoader classLoader) {
@@ -383,17 +388,34 @@ public final class DexMaker {
 
     private ClassLoader generateClassLoader(File result, File dexCache, ClassLoader parent) {
         try {
+            ClassLoader preferredSharedClassLoader = null;
+            Class baseDexClassLoaderClass = Class.forName("dalvik.system.BaseDexClassLoader");
+
+            if (sharedClassLoader != null) {
+                if (baseDexClassLoaderClass.isAssignableFrom(sharedClassLoader.getClass())) {
+                    preferredSharedClassLoader = sharedClassLoader;
+                } else {
+                    if (!didWarnNonBaseDexClassLoader) {
+                        System.err.println("Cannot share classloader as shared classloader '"
+                                + preferredSharedClassLoader + "' is not a subclass of '"
+                                + baseDexClassLoaderClass
+                                + "'");
+                        didWarnNonBaseDexClassLoader = true;
+                    }
+                }
+            }
+
             // Try to load the class so that it can call hidden APIs. This is required for spying
             // on system classes as real-methods of these classes might call blacklisted APIs
             if (markAsTrusted) {
                 try {
-                    if (sharedClassLoader != null) {
-                        ClassLoader loader = parent != null ? parent : sharedClassLoader;
+                    if (preferredSharedClassLoader != null) {
+                        ClassLoader loader = parent != null ? parent : preferredSharedClassLoader;
                         loader.getClass().getMethod("addDexPath", String.class,
                                 Boolean.TYPE).invoke(loader, result.getPath(), true);
                         return loader;
                     } else {
-                        return (ClassLoader) Class.forName("dalvik.system.BaseDexClassLoader")
+                        return (ClassLoader) baseDexClassLoaderClass
                                 .getConstructor(String.class, File.class, String.class,
                                         ClassLoader.class, Boolean.TYPE)
                                 .newInstance(result.getPath(), dexCache.getAbsoluteFile(), null,
@@ -401,16 +423,19 @@ public final class DexMaker {
                     }
                 } catch (InvocationTargetException e) {
                     if (e.getCause() instanceof SecurityException) {
-                        Log.i(LOG_TAG, "Cannot allow to call blacklisted super methods. This might "
-                                + "break spying on system classes.", e.getCause());
+                        if (!didWarnBlacklistedMethods) {
+                            System.err.println("Cannot allow to call blacklisted super methods. "
+                                    + "This might break spying on system classes." + e.getCause());
+                            didWarnBlacklistedMethods = true;
+                        }
                     } else {
                         throw e;
                     }
                 }
             }
 
-            if (sharedClassLoader != null) {
-                ClassLoader loader = parent != null ? parent : sharedClassLoader;
+            if (preferredSharedClassLoader != null) {
+                ClassLoader loader = parent != null ? parent : preferredSharedClassLoader;
                 loader.getClass().getMethod("addDexPath", String.class).invoke(loader,
                         result.getPath());
                 return loader;

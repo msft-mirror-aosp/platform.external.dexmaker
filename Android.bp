@@ -117,14 +117,13 @@ java_library_static {
     srcs: ["dexmaker-mockito-inline/src/main/java/**/*.java"],
     java_resource_dirs: ["dexmaker-mockito-inline/src/main/resources"],
     libs: [
-        "android-support-v4",
         "dexmaker",
         "mockito-api",
     ],
     required: ["libdexmakerjvmtiagent"],
 }
 
-// Build Dexmaker's inline MockMaker, a plugin to Mockito
+// Build Dexmaker's extended MockMaker, a plugin to Mockito
 java_library_static {
     name: "dexmaker-extended-mockmaker",
     sdk_version: "current",
@@ -133,7 +132,6 @@ java_library_static {
     java_resource_dirs: ["dexmaker-mockito-inline/src/main/resources"],
 
     libs: [
-        "android-support-v4",
         "dexmaker",
         "mockito-api",
         "dexmaker-inline-mockmaker",
@@ -144,8 +142,8 @@ java_library_static {
     ],
 }
 
-// Main target for dependent projects. Bundles all the run-time dependencies
-// needed to run Mockito tests on the device.
+// Provides mockito functionality for on-device tests. Does not allow stubbing of final or static
+// methods.
 java_library_static {
     name: "mockito-target",
     no_framework_libs: true,
@@ -156,9 +154,7 @@ java_library_static {
     sdk_version: "16",
 }
 
-// A mockito target that doesn't pull in junit. This is used to work around
-// issues caused by multiple copies of junit in the classpath, usually when a test
-// using mockito is run using android.test.runner.
+// Same as mockito-target but does not bundle junit
 java_library_static {
     name: "mockito-target-minus-junit4",
     no_framework_libs: true,
@@ -174,8 +170,9 @@ java_library_static {
     java_version: "1.7",
 }
 
-// Main target for dependent projects. Bundles all the run-time dependencies
-// needed to run Mockito tests on the device.
+// Provides mockito functionality for on-device tests. Allows stubbing of final methods. Does not
+// allow stubbing of static methods.
+// Project depending on this also need to depend on the static JNI library libdexmakerjvmtiagent
 java_library_static {
     name: "mockito-target-inline",
     no_framework_libs: true,
@@ -186,9 +183,7 @@ java_library_static {
     sdk_version: "current",
 }
 
-// A mockito target that doesn't pull in junit. This is used to work around
-// issues caused by multiple copies of junit in the classpath, usually when a test
-// using mockito is run using android.test.runner.
+// Same as mockito-target-inline but does not bundle junit
 java_library_static {
     name: "mockito-target-inline-minus-junit4",
     no_framework_libs: true,
@@ -197,7 +192,6 @@ java_library_static {
         "dexmaker",
         "dexmaker-inline-mockmaker",
         "objenesis",
-        "android-support-v4",
     ],
     libs: ["junit"],
     sdk_version: "current",
@@ -205,8 +199,10 @@ java_library_static {
     java_version: "1.7",
 }
 
-// Main target for dependent projects. Bundles all the run-time dependencies
-// needed to run Mockito tests on the device.
+// Provides mockito functionality for on-device tests. Allows stubbing of final and static methods.
+// Stubbing static methods is not an official mockito API.
+// Project depending on this also need to depend on the static JNI libraries libstaticjvmtiagent and
+// libdexmakerjvmtiagent
 java_library_static {
     name: "mockito-target-extended",
     no_framework_libs: true,
@@ -217,9 +213,7 @@ java_library_static {
     sdk_version: "current",
 }
 
-// A mockito target that doesn't pull in junit. This is used to work around
-// issues caused by multiple copies of junit in the classpath, usually when a test
-// using mockito is run using android.test.runner.
+// Same as mockito-target-extended but does not bundle junit
 java_library_static {
     name: "mockito-target-extended-minus-junit4",
     no_framework_libs: true,
@@ -229,7 +223,6 @@ java_library_static {
         "dexmaker-inline-mockmaker",
         "dexmaker-extended-mockmaker",
         "objenesis",
-        "android-support-v4",
     ],
     libs: ["junit"],
     sdk_version: "current",

@@ -13,7 +13,7 @@ apply plugin: "net.ltgt.errorprone"
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 'android-P'
+    compileSdkVersion 28
 
     android {
         lintOptions {
@@ -22,8 +22,8 @@ android {
     }
 
     defaultConfig {
-        minSdkVersion 27
-        targetSdkVersion 27
+        minSdkVersion 28
+        targetSdkVersion 28
         versionName VERSION_NAME
 
         testInstrumentationRunner 'android.support.test.runner.AndroidJUnitRunner'
@@ -49,5 +49,5 @@ dependencies {
     implementation 'com.android.support.test:runner:1.0.1'
     implementation 'com.android.support.test:rules:1.0.2'
 
-    api 'org.mockito:mockito-core:2.16.0', { exclude group: 'net.bytebuddy' }
+    api 'org.mockito:mockito-core:2.19.0', { exclude group: 'net.bytebuddy' }
 }
