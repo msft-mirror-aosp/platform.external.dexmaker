@@ -12,3 +12,4 @@ Local Modifications:
         Add ability to run dexmaker tests from within the source tree (I1b146841099b54f64d4a7dfe743b88717793619a)
         Allow to share classloader via dexmaker.share_classloader system property (Ia73198937e2e505f3baa96486f378fb8dc62d6d5)
 	Do not read Build.VERSION to allow non-standard Android distributions (I0b647514a306da979f7fdf96d5e5f8ae5e7ec945)
+	Fix caching of shared class loader proxies (needs upstream, I33c12311cb17366b936f4716c1bf89a5d2e18074)
