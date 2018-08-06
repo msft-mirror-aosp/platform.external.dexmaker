@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 25
+    compileSdkVersion 'android-P'
     buildToolsVersion "25.0.0"
 
     lintOptions {
@@ -28,6 +28,6 @@ repositories {
 
 dependencies {
     compile project(':dexmaker')
-    compile 'org.mockito:mockito-core:2.12.0'
+    compile 'org.mockito:mockito-core:2.15.0', { exclude group: "net.bytebuddy" }
 }
 
