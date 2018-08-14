@@ -17,14 +17,13 @@
 package com.android.dx.mockito.inline;
 
 import android.os.Build;
+import android.os.Debug;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.InvocationTargetException;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 
@@ -52,12 +51,9 @@ class JvmtiAgent {
      * @throws IOException If jvmti could not be enabled or agent could not be loaded
      */
     JvmtiAgent() throws IOException {
-        // TODO (moltmann@google.com): Replace with proper check for >= P
-        if (!Build.VERSION.CODENAME.equals("P")) {
-            throw new IOException("Requires Android P. Build is " + Build.VERSION.CODENAME);
+        if (Build.VERSION.SDK_INT < 28) {
+            throw new IOException("Requires API 28. API is " + Build.VERSION.SDK_INT);
         }
-
-        Throwable loadJvmtiException = null;
 
         ClassLoader cl = JvmtiAgent.class.getClassLoader();
         if (!(cl instanceof BaseDexClassLoader)) {
@@ -65,29 +61,7 @@ class JvmtiAgent {
                     + "by a BaseDexClassLoader");
         }
 
-        try {
-            /*
-             * TODO (moltmann@google.com): Replace with regular method call once the API becomes
-             *                             public
-             */
-            Class.forName("android.os.Debug").getMethod("attachJvmtiAgent", String.class,
-                    String.class, ClassLoader.class).invoke(null, AGENT_LIB_NAME,
-                    null, cl);
-        } catch (InvocationTargetException e) {
-            loadJvmtiException = e.getCause();
-        } catch (IllegalAccessException | ClassNotFoundException | NoSuchMethodException e) {
-            loadJvmtiException = e;
-        }
-
-        if (loadJvmtiException != null) {
-            if (loadJvmtiException instanceof IOException) {
-                throw new IOException(cl.toString(), loadJvmtiException);
-            } else {
-                throw new IOException("Could not load jvmti plugin",
-                        loadJvmtiException);
-            }
-        }
-
+        Debug.attachJvmtiAgent(AGENT_LIB_NAME, null, cl);
         nativeRegisterTransformerHook();
     }
 
@@ -143,6 +117,18 @@ class JvmtiAgent {
                 throw new UnmodifiableClassException(e);
             }
         }
+    }
+
+    // called by JNI
+    @SuppressWarnings("unused")
+    public boolean shouldTransform(Class<?> classBeingRedefined) {
+        for (ClassTransformer transformer : transformers) {
+            if (transformer.shouldTransform(classBeingRedefined)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

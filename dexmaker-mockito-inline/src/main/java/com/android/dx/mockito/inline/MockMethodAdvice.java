@@ -5,13 +5,11 @@
 
 package com.android.dx.mockito.inline;
 
-import org.mockito.internal.exceptions.stacktrace.ConditionalStackTraceFilter;
-import org.mockito.internal.util.concurrent.WeakConcurrentMap;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,14 +19,14 @@ import java.util.regex.Pattern;
  * be ignored.
  */
 class MockMethodAdvice {
-    private final WeakConcurrentMap<Object, InvocationHandlerAdapter> interceptors;
+    private final Map<Object, InvocationHandlerAdapter> interceptors;
 
     /** Pattern to decompose a instrumentedMethodWithTypeAndSignature */
     private final Pattern methodPattern = Pattern.compile("(.*)#(.*)\\((.*)\\)");
 
     private final SelfCallInfo selfCallInfo = new SelfCallInfo();
 
-    MockMethodAdvice(WeakConcurrentMap<Object, InvocationHandlerAdapter> interceptors) {
+    MockMethodAdvice(Map<Object, InvocationHandlerAdapter> interceptors) {
         this.interceptors = interceptors;
     }
 
@@ -48,12 +46,7 @@ class MockMethodAdvice {
         try {
             return origin.invoke(instance, arguments);
         } catch (InvocationTargetException exception) {
-            Throwable cause = exception.getCause();
-
-            new ConditionalStackTraceFilter().filter(hideRecursiveCall(cause,
-                    new Throwable().getStackTrace().length, origin.getDeclaringClass()));
-
-            throw cause;
+            throw exception.getCause();
         }
     }
 
@@ -259,7 +252,7 @@ class MockMethodAdvice {
     /**
      * Used to call the read (non mocked) method.
      */
-    private static class SuperMethodCall implements InterceptedInvocation.SuperMethod {
+    private static class SuperMethodCall implements InvocationHandlerAdapter.SuperMethod {
         private final SelfCallInfo selfCallInfo;
         private final Method origin;
         private final Object instance;
@@ -271,11 +264,6 @@ class MockMethodAdvice {
             this.origin = origin;
             this.instance = instance;
             this.arguments = arguments;
-        }
-
-        @Override
-        public boolean isInvokable() {
-            return true;
         }
 
         /**
