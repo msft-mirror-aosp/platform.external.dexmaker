@@ -49,6 +49,8 @@ import static com.android.dx.rop.code.AccessFlags.ACC_CONSTRUCTOR;
 import static java.lang.reflect.Modifier.PRIVATE;
 import static java.lang.reflect.Modifier.STATIC;
 
+import android.util.Log;
+
 /**
  * Generates a <strong>D</strong>alvik <strong>EX</strong>ecutable (dex)
  * file for execution on Android. Dex files define classes and interfaces,
@@ -196,13 +198,9 @@ import static java.lang.reflect.Modifier.STATIC;
  * }</pre>
  */
 public final class DexMaker {
+    private static final String LOG_TAG = DexMaker.class.getSimpleName();
+
     private final Map<TypeId<?>, TypeDeclaration> types = new LinkedHashMap<>();
-
-    // Only warn about not being able to deal with blacklisted methods once. Often this is no
-    // problem and warning on every class load is too spammy.
-    private static boolean didWarnBlacklistedMethods;
-    private static boolean didWarnNonBaseDexClassLoader;
-
     private ClassLoader sharedClassLoader;
     private DexFile outputDex;
     private boolean markAsTrusted;
@@ -373,9 +371,6 @@ public final class DexMaker {
      * class loader. One common case for this requirement is a mock class wanting to mock package
      * private methods of the original class.
      *
-     * <p>If the classLoader is not a subclass of {@code dalvik.system.BaseDexClassLoader} this
-     * option is ignored.
-     *
      * @param classLoader the class loader the new class should be loaded by
      */
     public void setSharedClassLoader(ClassLoader classLoader) {
@@ -388,71 +383,41 @@ public final class DexMaker {
 
     private ClassLoader generateClassLoader(File result, File dexCache, ClassLoader parent) {
         try {
-            boolean shareClassLoader = sharedClassLoader != null;
-
-            ClassLoader preferredClassLoader = null;
-            if (parent != null) {
-                preferredClassLoader = parent;
-            } else if (sharedClassLoader != null) {
-                preferredClassLoader = sharedClassLoader;
-            }
-
-            Class baseDexClassLoaderClass = Class.forName("dalvik.system.BaseDexClassLoader");
-
-            if (shareClassLoader) {
-                if (!baseDexClassLoaderClass.isAssignableFrom(preferredClassLoader.getClass())) {
-                    if (!preferredClassLoader.getClass().getName().equals(
-                            "java.lang.BootClassLoader")) {
-                        if (!didWarnNonBaseDexClassLoader) {
-                            System.err.println("Cannot share classloader as shared classloader '"
-                                    + preferredClassLoader + "' is not a subclass of '"
-                                    + baseDexClassLoaderClass
-                                    + "'");
-                            didWarnNonBaseDexClassLoader = true;
-                        }
-                    }
-
-                    shareClassLoader = false;
-                }
-            }
-
             // Try to load the class so that it can call hidden APIs. This is required for spying
             // on system classes as real-methods of these classes might call blacklisted APIs
             if (markAsTrusted) {
                 try {
-                    if (shareClassLoader) {
-                        preferredClassLoader.getClass().getMethod("addDexPath", String.class,
-                                Boolean.TYPE).invoke(preferredClassLoader, result.getPath(), true);
-                        return preferredClassLoader;
+                    if (sharedClassLoader != null) {
+                        ClassLoader loader = parent != null ? parent : sharedClassLoader;
+                        loader.getClass().getMethod("addDexPath", String.class,
+                                Boolean.TYPE).invoke(loader, result.getPath(), true);
+                        return loader;
                     } else {
-                        return (ClassLoader) baseDexClassLoaderClass
+                        return (ClassLoader) Class.forName("dalvik.system.BaseDexClassLoader")
                                 .getConstructor(String.class, File.class, String.class,
                                         ClassLoader.class, Boolean.TYPE)
                                 .newInstance(result.getPath(), dexCache.getAbsoluteFile(), null,
-                                        preferredClassLoader, true);
+                                        parent, true);
                     }
                 } catch (InvocationTargetException e) {
                     if (e.getCause() instanceof SecurityException) {
-                        if (!didWarnBlacklistedMethods) {
-                            System.err.println("Cannot allow to call blacklisted super methods. "
-                                    + "This might break spying on system classes." + e.getCause());
-                            didWarnBlacklistedMethods = true;
-                        }
+                        Log.i(LOG_TAG, "Cannot allow to call blacklisted super methods. This might "
+                                + "break spying on system classes.", e.getCause());
                     } else {
                         throw e;
                     }
                 }
             }
 
-            if (shareClassLoader) {
-                preferredClassLoader.getClass().getMethod("addDexPath", String.class).invoke(
-                        preferredClassLoader, result.getPath());
-                return preferredClassLoader;
+            if (sharedClassLoader != null) {
+                ClassLoader loader = parent != null ? parent : sharedClassLoader;
+                loader.getClass().getMethod("addDexPath", String.class).invoke(loader,
+                        result.getPath());
+                return loader;
             } else {
                 return (ClassLoader) Class.forName("dalvik.system.DexClassLoader")
                         .getConstructor(String.class, String.class, String.class, ClassLoader.class)
-                        .newInstance(result.getPath(), dexCache.getAbsolutePath(), null,
-                                preferredClassLoader);
+                        .newInstance(result.getPath(), dexCache.getAbsolutePath(), null, parent);
             }
         } catch (ClassNotFoundException e) {
             throw new UnsupportedOperationException("load() requires a Dalvik VM", e);
@@ -487,8 +452,7 @@ public final class DexMaker {
      * property.
      *
      * @param parent the parent ClassLoader to be used when loading our
-     *     generated types (if set, overrides
-     *     {@link #setSharedClassLoader(ClassLoader) shared class loader}.
+     *     generated types
      * @param dexCache the destination directory where generated and optimized
      *     dex files will be written. If null, this class will try to guess the
      *     application's private data dir.

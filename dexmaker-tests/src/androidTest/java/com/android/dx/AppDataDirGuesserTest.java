@@ -129,7 +129,6 @@ public final class AppDataDirGuesserTest {
     private TestCondition guessCacheDirFor(final String path) {
         final Set<String> notWriteable = new HashSet<>();
         return new TestCondition() {
-            @Override
             public void shouldGive(String... files) {
                 AppDataDirGuesser guesser = new AppDataDirGuesser() {
                     @Override
@@ -149,7 +148,6 @@ public final class AppDataDirGuesserTest {
                 }
             }
 
-            @Override
             public TestCondition withNonWriteable(String... files) {
                 notWriteable.addAll(Arrays.asList(files));
                 return this;
