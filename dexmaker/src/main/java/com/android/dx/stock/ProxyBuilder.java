@@ -43,10 +43,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-import static java.lang.reflect.Modifier.ABSTRACT;
 import static java.lang.reflect.Modifier.PRIVATE;
 import static java.lang.reflect.Modifier.PUBLIC;
 import static java.lang.reflect.Modifier.STATIC;
+
+import android.os.Build;
 
 /**
  * Creates dynamic proxies of concrete classes.
@@ -131,8 +132,8 @@ public final class ProxyBuilder<T> {
      * Android's runtime doesn't support class unloading so there's little
      * value in using weak references.
      */
-    private static final Map<ProxiedClass<?>, Class<?>> generatedProxyClasses
-            = Collections.synchronizedMap(new HashMap<ProxiedClass<?>, Class<?>>());
+    private static final Map<Class<?>, Class<?>> generatedProxyClasses
+            = Collections.synchronizedMap(new HashMap<Class<?>, Class<?>>());
 
     private final Class<T> baseClass;
     private ClassLoader parentClassLoader = ProxyBuilder.class.getClassLoader();
@@ -143,7 +144,6 @@ public final class ProxyBuilder<T> {
     private Set<Class<?>> interfaces = new HashSet<>();
     private Method[] methods;
     private boolean sharedClassLoader;
-    private boolean markTrusted;
 
     private ProxyBuilder(Class<T> clazz) {
         baseClass = clazz;
@@ -209,11 +209,6 @@ public final class ProxyBuilder<T> {
         return this;
     }
 
-    public ProxyBuilder<T> markTrusted() {
-        this.markTrusted = true;
-        return this;
-    }
-
     /**
      * Create a new instance of the class to proxy.
      *
@@ -263,20 +258,22 @@ public final class ProxyBuilder<T> {
      * {@link #setInvocationHandler(Object, InvocationHandler)}.
      */
     public Class<? extends T> buildProxyClass() throws IOException {
-        ClassLoader requestedClassloader;
-        if (sharedClassLoader) {
-            requestedClassloader = baseClass.getClassLoader();
-        } else {
-            requestedClassloader = parentClassLoader;
-        }
-
         // try the cache to see if we've generated this one before
         // we only populate the map with matching types
         @SuppressWarnings("unchecked")
-        Class<? extends T> proxyClass = (Class) generatedProxyClasses.get(
-                new ProxiedClass<>(baseClass, requestedClassloader, sharedClassLoader));
-        if (proxyClass != null && interfaces.equals(asSet(proxyClass.getInterfaces()))) {
-            return proxyClass; // cache hit!
+        Class<? extends T> proxyClass = (Class) generatedProxyClasses.get(baseClass);
+        if (proxyClass != null) {
+            boolean validClassLoader;
+            if (sharedClassLoader) {
+                ClassLoader parent = parentClassLoader != null ? parentClassLoader : baseClass
+                        .getClassLoader();
+                validClassLoader = proxyClass.getClassLoader() == parent;
+            } else {
+                validClassLoader = proxyClass.getClassLoader().getParent() == parentClassLoader;
+            }
+            if (validClassLoader && interfaces.equals(asSet(proxyClass.getInterfaces()))) {
+                return proxyClass; // cache hit!
+            }
         }
 
         // the cache missed; generate the class
@@ -304,9 +301,9 @@ public final class ProxyBuilder<T> {
         generateCodeForAllMethods(dexMaker, generatedType, methodsToProxy, superType);
         dexMaker.declare(generatedType, generatedName + ".generated", PUBLIC, superType, getInterfacesAsTypeIds());
         if (sharedClassLoader) {
-            dexMaker.setSharedClassLoader(requestedClassloader);
+            dexMaker.setSharedClassLoader(baseClass.getClassLoader());
         }
-        if (markTrusted) {
+        if (Build.VERSION.SDK_INT >= 28) {
             // The proxied class might have blacklisted methods. Blacklisting methods (and fields)
             // is a new feature of Android P:
             //
@@ -318,12 +315,7 @@ public final class ProxyBuilder<T> {
             // all generated classes as trusted.
             dexMaker.markAsTrusted();
         }
-        ClassLoader classLoader;
-        if (sharedClassLoader) {
-            classLoader = dexMaker.generateAndLoad(null, dexCache);
-        } else {
-            classLoader = dexMaker.generateAndLoad(parentClassLoader, dexCache);
-        }
+        ClassLoader classLoader = dexMaker.generateAndLoad(parentClassLoader, dexCache);
         try {
             proxyClass = loadClass(classLoader, generatedName);
         } catch (IllegalAccessError e) {
@@ -335,9 +327,7 @@ public final class ProxyBuilder<T> {
             throw new AssertionError(e);
         }
         setMethodsStaticField(proxyClass, methodsToProxy);
-        generatedProxyClasses.put(new ProxiedClass<>(baseClass, requestedClassloader,
-                        sharedClassLoader),
-                proxyClass);
+        generatedProxyClasses.put(baseClass, proxyClass);
         return proxyClass;
     }
 
@@ -434,36 +424,6 @@ public final class ProxyBuilder<T> {
         }
     }
 
-    /**
-     * Add
-     *
-     * <pre>
-     *     abstractMethodErrorMessage = method + " cannot be called";
-     *     abstractMethodError = new AbstractMethodError(abstractMethodErrorMessage);
-     *     throw abstractMethodError;
-     * </pre>
-     *
-     * to the {@code code}.
-     *
-     * @param code The code to add to
-     * @param method The method that is abstract
-     * @param abstractMethodErrorMessage The {@link Local} to store the error message
-     * @param abstractMethodError The {@link Local} to store the error object
-     */
-    private static void throwAbstractMethodError(Code code, Method method,
-                                                 Local<String> abstractMethodErrorMessage,
-                                                 Local<AbstractMethodError> abstractMethodError) {
-        TypeId<AbstractMethodError> abstractMethodErrorClass = TypeId.get(AbstractMethodError.class);
-
-        MethodId<AbstractMethodError, Void> abstractMethodErrorConstructor =
-                abstractMethodErrorClass.getConstructor(TypeId.STRING);
-        code.loadConstant(abstractMethodErrorMessage, "'" + method + "' cannot be called");
-        code.newInstance(abstractMethodError, abstractMethodErrorConstructor,
-                abstractMethodErrorMessage);
-
-        code.throwValue(abstractMethodError);
-    }
-
     private static <T, G extends T> void generateCodeForAllMethods(DexMaker dexMaker,
             TypeId<G> generatedType, Method[] methodsToProxy, TypeId<T> superclassType) {
         TypeId<InvocationHandler> handlerType = TypeId.get(InvocationHandler.class);
@@ -485,22 +445,36 @@ public final class ProxyBuilder<T> {
              *         ...
              *     }
              *
-             * Then the following dex byte code will generate a method on the proxy that looks
-             * something like this (in idiomatic Java):
+             * Then the following code will generate a method on the proxy that looks something
+             * like this:
              *
-             *     // if doSomething is not abstract
+             *     public int doSomething(Bar param0, int param1) {
+             *         int methodIndex = 4;
+             *         Method[] allMethods = Example_Proxy.$__methodArray;
+             *         Method thisMethod = allMethods[methodIndex];
+             *         int argsLength = 2;
+             *         Object[] args = new Object[argsLength];
+             *         InvocationHandler localHandler = this.$__handler;
+             *         // for-loop begins
+             *         int p = 0;
+             *         Bar parameter0 = param0;
+             *         args[p] = parameter0;
+             *         p = 1;
+             *         int parameter1 = param1;
+             *         Integer boxed1 = Integer.valueOf(parameter1);
+             *         args[p] = boxed1;
+             *         // for-loop ends
+             *         Object result = localHandler.invoke(this, thisMethod, args);
+             *         Integer castResult = (Integer) result;
+             *         int unboxedResult = castResult.intValue();
+             *         return unboxedResult;
+             *     }
+             *
+             * Or, in more idiomatic Java:
+             *
              *     public int doSomething(Bar param0, int param1) {
              *         if ($__handler == null) {
              *             return super.doSomething(param0, param1);
-             *         }
-             *         return __handler.invoke(this, __methodArray[4],
-             *                 new Object[] { param0, Integer.valueOf(param1) });
-             *     }
-             *
-             *     // if doSomething is abstract
-             *     public int doSomething(Bar param0, int param1) {
-             *         if ($__handler == null) {
-             *             throw new AbstractMethodError("'doSomething' cannot be called");
              *         }
              *         return __handler.invoke(this, __methodArray[4],
              *                 new Object[] { param0, Integer.valueOf(param1) });
@@ -515,9 +489,8 @@ public final class ProxyBuilder<T> {
             }
             Class<?> returnType = method.getReturnType();
             TypeId<?> resultType = TypeId.get(returnType);
+            MethodId<T, ?> superMethod = superclassType.getMethod(resultType, name, argTypes);
             MethodId<?, ?> methodId = generatedType.getMethod(resultType, name, argTypes);
-            TypeId<AbstractMethodError> abstractMethodErrorClass =
-                    TypeId.get(AbstractMethodError.class);
             Code code = dexMaker.declare(methodId, PUBLIC);
             Local<G> localThis = code.getThis(generatedType);
             Local<InvocationHandler> localHandler = code.newLocal(handlerType);
@@ -535,21 +508,9 @@ public final class ProxyBuilder<T> {
             if (aBoxedClass != null) {
                 aBoxedResult = code.newLocal(TypeId.get(aBoxedClass));
             }
+            Local<?>[] superArgs2 = new Local<?>[argClasses.length];
+            Local<?> superResult2 = code.newLocal(resultType);
             Local<InvocationHandler> nullHandler = code.newLocal(handlerType);
-
-            Local<?>[] superArgs2 = null;
-            Local<?> superResult2 = null;
-            MethodId<T, ?> superMethod = null;
-            Local<String> abstractMethodErrorMessage = null;
-            Local<AbstractMethodError> abstractMethodError = null;
-            if ((method.getModifiers() & ABSTRACT) == 0) {
-                superArgs2 = new Local<?>[argClasses.length];
-                superResult2 = code.newLocal(resultType);
-                superMethod = superclassType.getMethod(resultType, name, argTypes);
-            } else {
-                abstractMethodErrorMessage = code.newLocal(TypeId.STRING);
-                abstractMethodError = code.newLocal(abstractMethodErrorClass);
-            }
 
             code.loadConstant(methodIndex, m);
             code.sget(allMethods, methodArray);
@@ -580,21 +541,15 @@ public final class ProxyBuilder<T> {
             // This is required to handle the case of construction of an object which leaks the
             // "this" pointer.
             code.mark(handlerNullCase);
-
-            if ((method.getModifiers() & ABSTRACT) == 0) {
-                for (int i = 0; i < superArgs2.length; ++i) {
-                    superArgs2[i] = code.getParameter(i, argTypes[i]);
-                }
-                if (void.class.equals(returnType)) {
-                    code.invokeSuper(superMethod, null, localThis, superArgs2);
-                    code.returnVoid();
-                } else {
-                    invokeSuper(superMethod, code, localThis, superArgs2, superResult2);
-                    code.returnValue(superResult2);
-                }
+            for (int i = 0; i < superArgs2.length; ++i) {
+                superArgs2[i] = code.getParameter(i, argTypes[i]);
+            }
+            if (void.class.equals(returnType)) {
+                code.invokeSuper(superMethod, null, localThis, superArgs2);
+                code.returnVoid();
             } else {
-                throwAbstractMethodError(code, method, abstractMethodErrorMessage,
-                        abstractMethodError);
+                invokeSuper(superMethod, code, localThis, superArgs2, superResult2);
+                code.returnValue(superResult2);
             }
 
             /*
@@ -605,29 +560,22 @@ public final class ProxyBuilder<T> {
              *          return result;
              *     }
              */
+            // TODO: don't include a super_ method if the target is abstract!
             MethodId<G, ?> callsSuperMethod = generatedType.getMethod(
                     resultType, superMethodName(method), argTypes);
             Code superCode = dexMaker.declare(callsSuperMethod, PUBLIC);
-            if ((method.getModifiers() & ABSTRACT) == 0) {
-                Local<G> superThis = superCode.getThis(generatedType);
-                Local<?>[] superArgs = new Local<?>[argClasses.length];
-                for (int i = 0; i < superArgs.length; ++i) {
-                    superArgs[i] = superCode.getParameter(i, argTypes[i]);
-                }
-                if (void.class.equals(returnType)) {
-                    superCode.invokeSuper(superMethod, null, superThis, superArgs);
-                    superCode.returnVoid();
-                } else {
-                    Local<?> superResult = superCode.newLocal(resultType);
-                    invokeSuper(superMethod, superCode, superThis, superArgs, superResult);
-                    superCode.returnValue(superResult);
-                }
+            Local<G> superThis = superCode.getThis(generatedType);
+            Local<?>[] superArgs = new Local<?>[argClasses.length];
+            for (int i = 0; i < superArgs.length; ++i) {
+                superArgs[i] = superCode.getParameter(i, argTypes[i]);
+            }
+            if (void.class.equals(returnType)) {
+                superCode.invokeSuper(superMethod, null, superThis, superArgs);
+                superCode.returnVoid();
             } else {
-                Local<String> superAbstractMethodErrorMessage = superCode.newLocal(TypeId.STRING);
-                Local<AbstractMethodError> superAbstractMethodError = superCode.newLocal
-                        (abstractMethodErrorClass);
-                throwAbstractMethodError(superCode, method, superAbstractMethodErrorMessage,
-                        superAbstractMethodError);
+                Local<?> superResult = superCode.newLocal(resultType);
+                invokeSuper(superMethod, superCode, superThis, superArgs, superResult);
+                superCode.returnValue(superResult);
             }
         }
     }
@@ -933,50 +881,6 @@ public final class ProxyBuilder<T> {
             result += 31 * result + returnType.hashCode();
             result += 31 * result + Arrays.hashCode(paramTypes);
             return result;
-        }
-    }
-
-    /**
-     * A class that was already proxied.
-     */
-    private static class ProxiedClass<U> {
-        final Class<U> clazz;
-
-        /**
-         * Class loader requested when the proxy class was generated. This might not be the
-         * class loader of {@code clazz} as not all class loaders can be shared.
-         *
-         * @see DexMaker#generateClassLoader(File, File, ClassLoader)
-         */
-        final ClassLoader requestedClassloader;
-
-        final boolean sharedClassLoader;
-
-        @Override
-        public boolean equals(Object other) {
-            if (this == other) {
-                return true;
-            }
-            if (other == null || getClass() != other.getClass()) {
-                return false;
-            }
-
-            ProxiedClass<?> that = (ProxiedClass<?>) other;
-            return clazz == that.clazz
-                    && requestedClassloader == that.requestedClassloader
-                    && sharedClassLoader == that.sharedClassLoader;
-        }
-
-        @Override
-        public int hashCode() {
-            return clazz.hashCode() + requestedClassloader.hashCode() + (sharedClassLoader ? 1 : 0);
-        }
-
-        private ProxiedClass(Class<U> clazz, ClassLoader requestedClassloader,
-                             boolean sharedClassLoader) {
-            this.clazz = clazz;
-            this.requestedClassloader = requestedClassloader;
-            this.sharedClassLoader = sharedClassLoader;
         }
     }
 }
