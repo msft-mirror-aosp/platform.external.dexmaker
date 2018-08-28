@@ -16,8 +16,6 @@
 
 package com.android.dx.stock;
 
-import android.os.Build;
-
 import com.android.dx.DexMakerTest;
 import junit.framework.AssertionFailedError;
 import org.junit.After;
@@ -46,7 +44,6 @@ import static junit.framework.Assert.assertSame;
 import static junit.framework.Assert.assertTrue;
 import static junit.framework.Assert.fail;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assume.assumeTrue;
 
 public class ProxyBuilderTest {
     private FakeInvocationHandler fakeHandler = new FakeInvocationHandler();
@@ -205,7 +202,6 @@ public class ProxyBuilderTest {
         }
     }
 
-    @Test
     public void testProxyingPackagePrivateMethods_NotIntercepted()
             throws Throwable {
         HasPackagePrivateMethod proxy = proxyFor(HasPackagePrivateMethod.class)
@@ -219,27 +215,11 @@ public class ProxyBuilderTest {
 
         try {
             proxy.result();
+            fail();
         } catch (AssertionFailedError expected) {
-            return;
-        }
-        fail();
-    }
 
-    public static class HasPackagePrivateMethodSharedClassLoader {
-        String result() {
-            throw new AssertionFailedError();
         }
     }
-
-    @Test
-    public void testProxyingPackagePrivateMethodsWithSharedClassLoader_AreIntercepted()
-            throws Throwable {
-        assumeTrue(Build.VERSION.SDK_INT >= 24);
-
-        assertEquals("fake result", proxyFor(HasPackagePrivateMethodSharedClassLoader.class)
-                .withSharedClassLoader().build().result());
-    }
-
 
     public static class HasProtectedMethod {
         protected String result() {
@@ -291,7 +271,7 @@ public class ProxyBuilderTest {
     }
 
     @Test
-    @SuppressWarnings({"EqualsWithItself", "SelfEquals"})
+    @SuppressWarnings("EqualsWithItself")
     public void testObjectMethodsAreAlsoProxied() throws Throwable {
         Object proxy = proxyFor(Object.class).build();
         fakeHandler.setFakeResult("mystring");
@@ -355,7 +335,6 @@ public class ProxyBuilderTest {
     }
 
     public static class InvokeSuperHandler implements InvocationHandler {
-        @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             return ProxyBuilder.callSuper(proxy, method, args);
         }
@@ -426,7 +405,6 @@ public class ProxyBuilderTest {
     @Test
     public void testSinglePrimitiveParameter() throws Throwable {
         InvocationHandler handler = new InvocationHandler() {
-            @Override
             public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                 return "asdf" + ((Integer) args[0]).intValue();
             }
@@ -508,7 +486,6 @@ public class ProxyBuilderTest {
     @Test
     public void testSometimesDelegateToSuper() throws Exception {
         InvocationHandler delegatesOddValues = new InvocationHandler() {
-            @Override
             public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                 if (method.getName().equals("method")) {
                     int intValue = ((Integer) args[0]).intValue();
@@ -531,7 +508,6 @@ public class ProxyBuilderTest {
     @Test
     public void testCallSuperThrows() throws Exception {
         InvocationHandler handler = new InvocationHandler() {
-            @Override
             public Object invoke(Object o, Method method, Object[] objects) throws Throwable {
                 return ProxyBuilder.callSuper(o, method, objects);
             }
@@ -606,21 +582,6 @@ public class ProxyBuilderTest {
         assertEquals("fake result", proxyFor(AbstractClass.class).build().getValue());
     }
 
-    @Test
-    public void testCallAbstractSuperMethod() throws Exception {
-        AbstractClass a = proxyFor(AbstractClass.class).build();
-
-        // Setting the handler to null routes all calls to the real methods. In this case the real
-        // method is abstract and cannot be called
-        ProxyBuilder.setInvocationHandler(a, null);
-
-        try {
-            a.getValue();
-            fail();
-        } catch (AbstractMethodError expected) {
-        }
-    }
-
     public static class CtorHasDeclaredException {
         public CtorHasDeclaredException() throws IOException {
             throw new IOException();
@@ -655,11 +616,10 @@ public class ProxyBuilderTest {
         }
         try {
             proxyFor(CtorHasError.class).build();
+            fail();
         } catch (Error expected) {
             assertEquals("my message again", expected.getMessage());
-            return;
         }
-        fail();
     }
 
     @Test
@@ -811,7 +771,6 @@ public class ProxyBuilderTest {
     @Test
     public void testImplementInterfaceCallingThroughConcreteClass() throws Throwable {
         InvocationHandler invocationHandler = new InvocationHandler() {
-            @Override
             public Object invoke(Object o, Method method, Object[] objects) throws Throwable {
                 assertEquals("a", ProxyBuilder.callSuper(o, method, objects));
                 return "b";
@@ -837,7 +796,6 @@ public class ProxyBuilderTest {
         final AtomicInteger count = new AtomicInteger();
 
         InvocationHandler invocationHandler = new InvocationHandler() {
-            @Override
             public Object invoke(Object o, Method method, Object[] objects) throws Throwable {
                 count.incrementAndGet();
                 return ProxyBuilder.callSuper(o, method, objects);
@@ -859,7 +817,6 @@ public class ProxyBuilderTest {
     }
 
     public static class ImplementsCallable implements Callable<String> {
-        @Override
         public String call() throws Exception {
             return "a";
         }
@@ -874,7 +831,6 @@ public class ProxyBuilderTest {
     @Test
     public void testInterfacesSameNamesDifferentReturnTypes() throws Throwable {
         InvocationHandler handler = new InvocationHandler() {
-            @Override
             public Object invoke(Object o, Method method, Object[] objects) throws Throwable {
                 if (method.getReturnType() == void.class) {
                     return null;
@@ -901,23 +857,6 @@ public class ProxyBuilderTest {
 
         FooReturnsInt c = (FooReturnsInt) o;
         assertEquals(3, c.foo());
-    }
-
-
-    @Test
-    public void testCallInterfaceSuperMethod() throws Exception {
-        FooReturnsVoid f = (FooReturnsVoid)proxyFor(Object.class).implementing(FooReturnsVoid.class)
-                .build();
-
-        // Setting the handler to null routes all calls to the real methods. In this case the real
-        // method is a method of an interface and cannot be called
-        ProxyBuilder.setInvocationHandler(f, null);
-
-        try {
-            f.foo();
-            fail();
-        } catch (AbstractMethodError expected) {
-        }
     }
 
     @Test
@@ -1035,7 +974,6 @@ public class ProxyBuilderTest {
     private static class FakeInvocationHandler implements InvocationHandler {
         private Object fakeResult = "fake result";
 
-        @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             return fakeResult;
         }
@@ -1139,7 +1077,6 @@ public class ProxyBuilderTest {
     }
 
     public static class ConcreteClassA implements FooReturnsInt {
-        @Override
         // from FooReturnsInt
         public int foo() {
             return 1;
@@ -1152,7 +1089,6 @@ public class ProxyBuilderTest {
     }
 
     public static class ConcreteClassB implements FooReturnsInt {
-        @Override
         // from FooReturnsInt
         public int foo() {
             return 0;
@@ -1214,7 +1150,6 @@ public class ProxyBuilderTest {
         }
 
         InvocationHandler handler = new InvokeSuperHandler() {
-            @Override
             public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                 if (method.getName().equals("returnA")) {
                     return "fake A";

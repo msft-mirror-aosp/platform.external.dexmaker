@@ -14,23 +14,4 @@
 
 LOCAL_PATH := $(call my-dir)
 
-include $(CLEAR_VARS)
-
-# Build a test APK
-#
-# Run the tests as follows:
-# m -j DexmakerTests && \
-#      adb install -r $OUT/testcases/DexmakerTests/DexmakerTests.apk && \
-#      adb shell am instrument -w com.linkedin.dexmaker
-
-LOCAL_PACKAGE_NAME := DexmakerTests
-LOCAL_SDK_VERSION := current
-
-LOCAL_MODULE_TAGS := tests
-LOCAL_MODULE_PATH := $(TARGET_OUT_DATA_APPS)
-
-LOCAL_STATIC_JAVA_LIBRARIES := dexmaker-tests-lib dexmaker android-support-test junit
-
-include $(BUILD_PACKAGE)
-
 include $(call all-makefiles-under, $(LOCAL_PATH))
