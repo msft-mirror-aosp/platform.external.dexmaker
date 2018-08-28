@@ -5,7 +5,6 @@
 
 package com.android.dx.mockito.inline;
 
-import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -25,7 +24,6 @@ class MockMethodAdvice {
     /** Pattern to decompose a instrumentedMethodWithTypeAndSignature */
     private final Pattern methodPattern = Pattern.compile("(.*)#(.*)\\((.*)\\)");
 
-    @SuppressWarnings("ThreadLocalUsage")
     private final SelfCallInfo selfCallInfo = new SelfCallInfo();
 
     MockMethodAdvice(Map<Object, InvocationHandlerAdapter> interceptors) {
@@ -257,14 +255,14 @@ class MockMethodAdvice {
     private static class SuperMethodCall implements InvocationHandlerAdapter.SuperMethod {
         private final SelfCallInfo selfCallInfo;
         private final Method origin;
-        private final WeakReference<Object> instance;
+        private final Object instance;
         private final Object[] arguments;
 
         private SuperMethodCall(SelfCallInfo selfCallInfo, Method origin, Object instance,
                                 Object[] arguments) {
             this.selfCallInfo = selfCallInfo;
             this.origin = origin;
-            this.instance = new WeakReference<>(instance);
+            this.instance = instance;
             this.arguments = arguments;
         }
 
@@ -283,8 +281,8 @@ class MockMethodAdvice {
 
             // By setting instance in the the selfCallInfo, once single method call on this instance
             // and thread will call the read method as isMocked will return false.
-            selfCallInfo.set(instance.get());
-            return tryInvoke(origin, instance.get(), arguments);
+            selfCallInfo.set(instance);
+            return tryInvoke(origin, instance, arguments);
         }
 
     }
