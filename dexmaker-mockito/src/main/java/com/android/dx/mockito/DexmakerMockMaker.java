@@ -37,12 +37,16 @@ import java.util.Set;
  */
 public final class DexmakerMockMaker implements MockMaker, StackTraceCleanerProvider {
     private final UnsafeAllocator unsafeAllocator = UnsafeAllocator.create();
-    private final boolean isApi28;
+    private boolean isApi28;
 
     public DexmakerMockMaker() throws Exception {
-        Class buildVersion = Class.forName("android.os.Build$VERSION");
-
-        isApi28 = buildVersion.getDeclaredField("SDK_INT").getInt(null) >= 28;
+        try {
+            Class buildVersion = Class.forName("android.os.Build$VERSION");
+            isApi28 = buildVersion.getDeclaredField("SDK_INT").getInt(null) >= 28;
+        } catch (ClassNotFoundException e) {
+            System.err.println("Could not determine platform API level, assuming >= 28: " + e);
+            isApi28 = true;
+        }
 
         if (isApi28) {
             // Blacklisted APIs were introduced in Android P:
