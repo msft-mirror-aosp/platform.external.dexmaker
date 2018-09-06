@@ -102,6 +102,11 @@ public final class DexmakerMockMaker implements MockMaker, StackTraceCleanerProv
                     builder.markTrusted();
                 }
 
+                if (Boolean.parseBoolean(
+                        System.getProperty("dexmaker.share_classloader", "false"))) {
+                    builder.withSharedClassLoader();
+                }
+
                 Class<? extends T> proxyClass = builder.buildProxyClass();
                 T mock = unsafeAllocator.newInstance(proxyClass);
                 ProxyBuilder.setInvocationHandler(mock, invocationHandler);
