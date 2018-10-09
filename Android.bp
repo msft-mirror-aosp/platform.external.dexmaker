@@ -23,13 +23,13 @@ java_library_static {
         "dexmaker-dex-target",
     ],
 
-    sdk_version: "10",
+    sdk_version: "core_current",
 }
 
 // Build Dexmaker's MockMaker, a plugin to Mockito
 java_library_static {
     name: "dexmaker-mockmaker",
-    sdk_version: "10",
+    sdk_version: "core_current",
     srcs: ["dexmaker-mockito/src/main/java/**/*.java"],
     java_resource_dirs: ["dexmaker-mockito/src/main/resources"],
     libs: [
@@ -151,7 +151,7 @@ java_library_static {
         "mockito-target-minus-junit4",
         "junit",
     ],
-    sdk_version: "16",
+    sdk_version: "core_current",
 }
 
 // Same as mockito-target but does not bundle junit
@@ -165,7 +165,7 @@ java_library_static {
         "objenesis",
     ],
     libs: ["junit"],
-    sdk_version: "16",
+    sdk_version: "core_current",
 
     java_version: "1.7",
 }
