@@ -46,6 +46,7 @@ import static junit.framework.Assert.assertSame;
 import static junit.framework.Assert.assertTrue;
 import static junit.framework.Assert.fail;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assume.assumeTrue;
 
 public class ProxyBuilderTest {
@@ -1238,5 +1239,27 @@ public class ProxyBuilderTest {
         assertEquals("D", proxy.returnD());
         assertEquals("fake E", proxy.returnE());
 
+    }
+
+    @Test
+    public void testImplementingDifferentInterfacesWithSharedClassLoader() throws IOException {
+        assumeTrue(Build.VERSION.SDK_INT >= 24);
+
+        Class<?> c1 = ProxyBuilder.forClass(SimpleClass.class)
+                .implementing(Runnable.class).withSharedClassLoader().buildProxyClass();
+        Class<?> c2 = ProxyBuilder.forClass(SimpleClass.class)
+                .implementing(Callable.class).withSharedClassLoader().buildProxyClass();
+        assertNotSame(c1, c2);
+    }
+
+    @Test
+    public void testInterfaceOrder() throws Exception {
+        Class<?> c1 = proxyFor(SimpleClass.class)
+                .implementing(Runnable.class, Callable.class).buildProxyClass();
+        assertEquals(new Class[]{Runnable.class, Callable.class}, c1.getInterfaces());
+
+        Class<?> c2 = proxyFor(SimpleClass.class)
+                .implementing(Callable.class, Runnable.class).buildProxyClass();
+        assertEquals(new Class[]{Callable.class, Runnable.class}, c2.getInterfaces());
     }
 }
