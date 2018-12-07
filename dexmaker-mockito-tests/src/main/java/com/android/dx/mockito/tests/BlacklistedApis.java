@@ -36,6 +36,7 @@ import android.view.View;
 import android.widget.FrameLayout;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -63,6 +64,7 @@ public class BlacklistedApis {
     }
 
     @Test
+    @Ignore("b/117829328")
     public void callBlacklistedPublicMethodRealMethod() throws Exception {
         Context targetContext = InstrumentationRegistry.getTargetContext();
 
