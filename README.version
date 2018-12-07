@@ -1,5 +1,5 @@
 URL: https://github.com/linkedin/dexmaker/
-Version: master (2a9362a34e724a5806bf26802c0b0175686686fe)
+Version: master (8ff85edb2793cc1e0f6a93c67b127cb9c43d924e)
 License: Apache 2.0
 Description:
 Dexmaker is a Java-language API for doing compile time or runtime code generation targeting the Dalvik VM. Unlike cglib or ASM, this library creates Dalvik .dex files instead of Java .class files.
