@@ -326,7 +326,7 @@ public final class DexMaker {
     public byte[] generate() {
         if (outputDex == null) {
             DexOptions options = new DexOptions();
-            options.targetApiLevel = DexFormat.API_NO_EXTENDED_OPCODES;
+            options.minSdkVersion = DexFormat.API_NO_EXTENDED_OPCODES;
             outputDex = new DexFile(options);
         }
 
@@ -356,7 +356,8 @@ public final class DexMaker {
             TypeDeclaration decl = getTypeDeclaration(typeId);
             Set<MethodId> methodSet = decl.methods.keySet();
             if (decl.supertype != null) {
-                checksums[i++] = 31 * decl.supertype.hashCode() + methodSet.hashCode();
+                int sum = 31 * decl.supertype.hashCode() + decl.interfaces.hashCode();
+                checksums[i++] = 31 * sum + methodSet.hashCode();
             }
         }
         Arrays.sort(checksums);
@@ -540,7 +541,7 @@ public final class DexMaker {
     DexFile getDexFile() {
         if (outputDex == null) {
             DexOptions options = new DexOptions();
-            options.targetApiLevel = DexFormat.API_NO_EXTENDED_OPCODES;
+            options.minSdkVersion = DexFormat.API_NO_EXTENDED_OPCODES;
             outputDex = new DexFile(options);
         }
         return outputDex;
@@ -571,7 +572,7 @@ public final class DexMaker {
             }
 
             DexOptions dexOptions = new DexOptions();
-            dexOptions.targetApiLevel = DexFormat.API_NO_EXTENDED_OPCODES;
+            dexOptions.minSdkVersion = DexFormat.API_NO_EXTENDED_OPCODES;
 
             CstType thisType = type.constant;
 
