@@ -293,3 +293,19 @@ java_library_static {
         "dexmaker-extended-mockmaker",
     ],
 }
+
+/*
+ * To run the tests:
+ *   atest DexmakerTests
+ */
+
+android_test {
+    name: "DexmakerTests",
+    sdk_version: "current",
+    static_libs: [
+        "dexmaker-tests-lib",
+        "dexmaker",
+        "android-support-test",
+        "junit",
+    ],
+}
