@@ -241,7 +241,7 @@ java_library_static {
     srcs: ["dexmaker-tests/src/androidTest/java/**/*.java"],
 
     libs: [
-        "android-support-test",
+        "androidx.test.rules",
         "dexmaker",
         "junit",
     ],
@@ -254,7 +254,7 @@ java_library_static {
     srcs: ["dexmaker-mockito-tests/src/main/java/**/*.java"],
 
     libs: [
-        "android-support-test",
+        "androidx.test.rules",
         "dexmaker",
         "mockito",
         "junit",
@@ -269,7 +269,7 @@ java_library_static {
     srcs: ["dexmaker-mockito-inline-tests/src/main/java/**/*.java"],
 
     libs: [
-        "android-support-test",
+        "androidx.test.rules",
         "dexmaker",
         "android-support-v4",
         "mockito",
@@ -285,7 +285,7 @@ java_library_static {
     srcs: ["dexmaker-mockito-inline-extended-tests/src/main/java/**/*.java"],
 
     libs: [
-        "android-support-test",
+        "androidx.test.rules",
         "dexmaker",
         "android-support-v4",
         "mockito",
@@ -305,7 +305,7 @@ android_test {
     static_libs: [
         "dexmaker-tests-lib",
         "dexmaker",
-        "android-support-test",
+        "androidx.test.rules",
         "junit",
     ],
 }
