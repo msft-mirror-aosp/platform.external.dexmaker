@@ -21,6 +21,6 @@
 
     <application android:allowBackup="false" android:debuggable="true" />
 
-    <instrumentation android:name="android.support.test.runner.AndroidJUnitRunner"
+    <instrumentation android:name="androidx.test.runner.AndroidJUnitRunner"
                      android:targetPackage="com.linkedin.dexmaker" />
 </manifest>
