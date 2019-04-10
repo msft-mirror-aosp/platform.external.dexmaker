@@ -26,7 +26,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := dexmaker-tests
 LOCAL_SDK_VERSION := 17
 LOCAL_SRC_FILES := $(call all-java-files-under, src/androidTest/java)
-LOCAL_STATIC_JAVA_LIBRARIES := dexmaker android-support-test
+LOCAL_STATIC_JAVA_LIBRARIES := dexmaker androidx.test.rules
 LOCAL_ERROR_PRONE_FLAGS := -Xep:JUnit4TestNotRun:WARN
 include $(BUILD_STATIC_JAVA_LIBRARY)
 

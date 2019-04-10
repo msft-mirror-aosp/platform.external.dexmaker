@@ -15,10 +15,18 @@
  */
 package com.android.dx;
 
-import android.support.test.InstrumentationRegistry;
+import static com.android.dx.TypeId.*;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+import androidx.test.InstrumentationRegistry;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import static java.lang.reflect.Modifier.PUBLIC;
 
 import java.io.File;
 import java.lang.annotation.*;
@@ -26,11 +34,6 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static com.android.dx.TypeId.*;
-import static java.lang.reflect.Modifier.PUBLIC;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 public final class AnnotationIdTest {
 

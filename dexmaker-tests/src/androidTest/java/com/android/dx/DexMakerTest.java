@@ -16,9 +16,27 @@
 
 package com.android.dx;
 
-import android.support.test.InstrumentationRegistry;
+import static com.android.dx.util.TestUtil.DELTA_DOUBLE;
+import static com.android.dx.util.TestUtil.DELTA_FLOAT;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import androidx.test.InstrumentationRegistry;
+
 import org.junit.Before;
 import org.junit.Test;
+
+import static java.lang.reflect.Modifier.ABSTRACT;
+import static java.lang.reflect.Modifier.FINAL;
+import static java.lang.reflect.Modifier.NATIVE;
+import static java.lang.reflect.Modifier.PRIVATE;
+import static java.lang.reflect.Modifier.PROTECTED;
+import static java.lang.reflect.Modifier.PUBLIC;
+import static java.lang.reflect.Modifier.STATIC;
+import static java.lang.reflect.Modifier.SYNCHRONIZED;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -30,21 +48,6 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
-
-import static com.android.dx.util.TestUtil.DELTA_DOUBLE;
-import static com.android.dx.util.TestUtil.DELTA_FLOAT;
-import static java.lang.reflect.Modifier.ABSTRACT;
-import static java.lang.reflect.Modifier.FINAL;
-import static java.lang.reflect.Modifier.NATIVE;
-import static java.lang.reflect.Modifier.PRIVATE;
-import static java.lang.reflect.Modifier.PROTECTED;
-import static java.lang.reflect.Modifier.PUBLIC;
-import static java.lang.reflect.Modifier.STATIC;
-import static java.lang.reflect.Modifier.SYNCHRONIZED;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  * This generates a class named 'Generated' with one or more generated methods
