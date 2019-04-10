@@ -14,7 +14,7 @@ android {
         targetSdkVersion 25
         versionName VERSION_NAME
 
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 }
 
