@@ -77,8 +77,8 @@ cc_defaults {
         "libz",
     ],
 
-    include_dirs: [
-        "art/openjdkjvmti/include",
+    header_libs: [
+	    "libopenjdkjvmti_headers",
     ],
 }
 
