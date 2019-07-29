@@ -36,6 +36,6 @@ dependencies {
     implementation project(":dexmaker")
 
     //noinspection GradleDependency
-    androidTestImplementation 'com.android.support.test:runner:0.5'
+    androidTestImplementation 'androidx.test:runner:1.1.1'
     androidTestImplementation 'junit:junit:4.12'
 }
