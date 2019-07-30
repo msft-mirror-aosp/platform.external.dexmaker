@@ -152,7 +152,7 @@ class StaticMockMethodAdvice {
         return subclasses;
     }
 
-    private synchronized static native String nativeGetCalledClassName(Thread currentThread);
+    private synchronized static native String nativeGetCalledClassName();
 
     private Class<?> getClassMethodWasCalledOn(MethodDesc methodDesc) throws ClassNotFoundException,
             NoSuchMethodException {
@@ -183,7 +183,7 @@ class StaticMockMethodAdvice {
                 return null;
             }
 
-            String calledClassName = nativeGetCalledClassName(Thread.currentThread());
+            String calledClassName = nativeGetCalledClassName();
             return Class.forName(calledClassName);
         }
     }
