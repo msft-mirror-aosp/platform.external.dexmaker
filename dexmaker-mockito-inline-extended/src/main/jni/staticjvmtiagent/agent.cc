@@ -747,9 +747,7 @@ namespace com_android_dx_mockito_inline {
 
     extern "C" JNIEXPORT jstring JNICALL
     Java_com_android_dx_mockito_inline_StaticMockMethodAdvice_nativeGetCalledClassName(JNIEnv* env,
-                                                                            jclass klass,
-                                                                            jthread currentThread) {
-
+                                                                                     jclass klass) {
         JavaVM *vm;
         jint jvmError = env->GetJavaVM(&vm);
         if (jvmError != JNI_OK) {
@@ -806,7 +804,7 @@ namespace com_android_dx_mockito_inline {
         GOTO_ON_ERROR(unregister_env_and_exit);
 
         error = jvmtiEnv->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK,
-                                                   currentThread);
+                                                   nullptr);
         GOTO_ON_ERROR(unset_cb_and_exit);
 
         frameToInspect = &frameInfo[callingFrameNum];
@@ -815,7 +813,7 @@ namespace com_android_dx_mockito_inline {
 
         disable_hook_and_exit:
         jvmtiEnv->SetEventNotificationMode(JVMTI_DISABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK,
-                                           currentThread);
+                                           nullptr);
 
         unset_cb_and_exit:
         memset(&cb, 0, sizeof(cb));
