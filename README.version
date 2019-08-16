@@ -15,4 +15,3 @@ Local Modifications:
         Temporarily ignore failing test (Ibf7b6c2eb05c5ff83f0817f9224369e20c0b775d)
         Restrict InspectClass to current thread. (Ic62951ff81bed60ac7512455fad65210e4b728a9, need upstreaming)
         Exclude Stress#mockALot from presubmit (Ic9a2927ffa07924bd759429e31c56dc1b71a826c)
-        Update to Mockito 2.25.0 and impl InlineMockMaker (29a8674036d345e4ec8635b1d38d8b2a4fe91980a, need upstreaming)
