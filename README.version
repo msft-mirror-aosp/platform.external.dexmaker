@@ -14,3 +14,4 @@ Local Modifications:
         Do not read Build.VERSION to allow non-standard Android distributions (Ia8c4ba4c82cd6f193c565f1bfe48faffc4aac08f)
         Temporarily ignore failing test (Ibf7b6c2eb05c5ff83f0817f9224369e20c0b775d)
         Restrict InspectClass to current thread. (Ic62951ff81bed60ac7512455fad65210e4b728a9, need upstreaming)
+        Extend timeout of Stress#mockALot() for CTS. (Iad30a8cb07b38054b490b7006d11908fc752a024)
