@@ -17,3 +17,4 @@ Local Modifications:
         Exclude Stress#mockALot from presubmit (Ic9a2927ffa07924bd759429e31c56dc1b71a826c)
         Extend timeout of Stress#mockALot() for CTS. (Iad30a8cb07b38054b490b7006d11908fc752a024)
         Update to Mockito 2.25.0 and impl InlineMockMaker (29a8674036d345e4ec8635b1d38d8b2a4fe91980a, need upstreaming)
+	guessPath not to depend on the first level of app directory (I66f1d7036949c2f05e6d37bc270d47f8e77e51c1, need upstreaming)
