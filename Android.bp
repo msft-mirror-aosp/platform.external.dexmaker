@@ -78,7 +78,7 @@ cc_defaults {
     ],
 
     header_libs: [
-	    "libopenjdkjvmti_headers",
+        "libopenjdkjvmti_headers",
     ],
 }
 
@@ -137,7 +137,7 @@ java_library_static {
     ],
     required: [
         "libdexmakerjvmtiagent",
-        "libstaticjvmtiagent"
+        "libstaticjvmtiagent",
     ],
 }
 
