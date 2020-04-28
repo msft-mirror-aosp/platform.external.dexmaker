@@ -24,7 +24,6 @@ import static org.mockito.Mockito.when;
 
 import android.util.Log;
 
-import androidx.test.filters.LargeTest;
 import androidx.test.runner.AndroidJUnit4;
 
 import org.junit.Test;
@@ -41,8 +40,7 @@ public class Stress {
         }
     }
 
-    @LargeTest
-    @Test(timeout=600000)
+    @Test
     public void mockALot() {
         for (int i = 0; i < NUM_TESTS; i++) {
             if (i % 1024 == 0) {

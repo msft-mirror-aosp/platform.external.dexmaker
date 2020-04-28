@@ -1,36 +1,16 @@
 {
     "postsubmit": [
         {
-            "name": "CtsMockingTestCases",
-            "options": [
-                {
-                    "exclude-annotation": "androidx.test.filters.LargeTest"
-                }
-            ]
+            "name": "CtsMockingTestCases"
         },
         {
-            "name": "CtsInlineMockingTestCases",
-            "options": [
-                {
-                    "exclude-annotation": "androidx.test.filters.LargeTest"
-                }
-            ]
+            "name": "CtsInlineMockingTestCases"
         },
         {
-            "name": "CtsMockingDebuggableTestCases",
-            "options": [
-                {
-                    "exclude-annotation": "androidx.test.filters.LargeTest"
-                }
-            ]
+            "name": "CtsMockingDebuggableTestCases"
         },
         {
-            "name": "CtsExtendedMockingTestCases",
-            "options": [
-                {
-                    "exclude-annotation": "androidx.test.filters.LargeTest"
-                }
-            ]
+            "name": "CtsExtendedMockingTestCases"
         }
     ]
 }
