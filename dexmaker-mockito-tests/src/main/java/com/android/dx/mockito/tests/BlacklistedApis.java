@@ -117,7 +117,7 @@ public class BlacklistedApis {
         parent.measure(100, 100);
     }
 
-    @SuppressLint({"PrivateApi", "CheckReturnValue", "SoonBlockedPrivateApi"})
+    @SuppressLint({"PrivateApi", "CheckReturnValue"})
     @Test
     public void cannotCallBlackListedAfterSpying() {
         // Spying and mocking might change the View class's byte code
@@ -134,7 +134,7 @@ public class BlacklistedApis {
     }
 
     public static class CallBlackListedMethod {
-        @SuppressLint({"PrivateApi", "SoonBlockedPrivateApi"})
+        @SuppressLint("PrivateApi")
         boolean callingBlacklistedMethodCausesException() {
             // Settings.Global#isValidZenMode is a blacklisted method. Resolving it should fail
             try {
@@ -153,7 +153,7 @@ public class BlacklistedApis {
     }
 
     public static abstract class CallBlacklistedMethodAbstract {
-        @SuppressLint({"PrivateApi", "SoonBlockedPrivateApi"})
+        @SuppressLint("PrivateApi")
         public boolean callingBlacklistedMethodCausesException() {
             // Settings.Global#isValidZenMode is a blacklisted method. Resolving it should fail
             try {
