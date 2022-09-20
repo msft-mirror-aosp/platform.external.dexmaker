@@ -37,16 +37,15 @@ import java.util.Set;
  */
 public final class DexmakerMockMaker implements MockMaker, StackTraceCleanerProvider {
     private final UnsafeAllocator unsafeAllocator = UnsafeAllocator.create();
-    private final boolean isApi28;
+    private boolean isApi28;
 
-    public DexmakerMockMaker() {
+    public DexmakerMockMaker() throws Exception {
         try {
             Class buildVersion = Class.forName("android.os.Build$VERSION");
-
             isApi28 = buildVersion.getDeclaredField("SDK_INT").getInt(null) >= 28;
-        } catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException e) {
-            throw new IllegalStateException("Cannot find android.os.Build$VERSION#SDK_INT. " +
-                "Field is needed to determine Android version.", e);
+        } catch (ClassNotFoundException e) {
+            System.err.println("Could not determine platform API level, assuming >= 28: " + e);
+            isApi28 = true;
         }
 
         if (isApi28) {
@@ -76,17 +75,6 @@ public final class DexmakerMockMaker implements MockMaker, StackTraceCleanerProv
             } catch (InvocationTargetException | IllegalAccessException e) {
                 System.err.println("Cannot allow LenientCopyTool to copy spies of blacklisted "
                         + "fields. This might break spying on system classes.");
-            }
-
-            // The ProxyBuilder class needs to be able to see hidden methods in order to proxy
-            // them correctly. If it cannot see blacklisted methods, then other system classes
-            // which call hidden methods on the mock will call through to the real method rather
-            // than the proxy, which may cause crashes or other unexpected behavior.
-            try {
-                allowHiddenApiReflectionFromMethod.invoke(null, ProxyBuilder.class);
-            } catch (InvocationTargetException | IllegalAccessException e) {
-                System.err.println("Cannot allow ProxyBuilder to proxy blacklisted "
-                        + "methods. This might break mocking on system classes.");
             }
         }
     }
