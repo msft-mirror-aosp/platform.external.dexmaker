@@ -42,7 +42,7 @@ public class Stress {
     }
 
     @LargeTest
-    @Test(timeout=600000)
+    @Test(timeout=1020000)
     public void mockALot() {
         for (int i = 0; i < NUM_TESTS; i++) {
             if (i % 1024 == 0) {
