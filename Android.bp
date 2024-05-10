@@ -190,6 +190,7 @@ java_library_static {
     errorprone: {
         javacflags: [
             "-Xep:ReturnValueIgnored:WARN",
+            "-Xep:InfiniteRecursion:WARN",
         ],
     },
 }
