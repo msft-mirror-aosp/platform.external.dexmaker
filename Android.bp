@@ -252,8 +252,6 @@ java_library_static {
 // Stubbing static methods is not an official mockito API.
 // Project depending on this also need to depend on the static JNI libraries libstaticjvmtiagent and
 // libdexmakerjvmtiagent
-// This library as known leaks that can lead to a crash. Local workaround is to
-// call Mockito.framework().clearInlineMocks()
 java_library_static {
     name: "mockito-target-extended",
     static_libs: [
