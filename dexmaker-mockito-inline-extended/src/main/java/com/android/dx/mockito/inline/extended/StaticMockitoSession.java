@@ -16,6 +16,7 @@
 
 package com.android.dx.mockito.inline.extended;
 
+import org.mockito.exceptions.base.MockitoException;
 import org.mockito.Mockito;
 import org.mockito.MockitoSession;
 import org.mockito.quality.Strictness;
@@ -68,6 +69,17 @@ public class StaticMockitoSession implements MockitoSession {
         try {
             instanceSession.finishMocking(failure);
         } finally {
+            if (failure != null) {
+                try {
+                    Mockito.validateMockitoUsage();
+                } catch (MockitoException e) {
+                    // The delegate finishMocking would normally validate,
+                    // except it doesn't if there's a failure passed in.
+                    // We trigger and clear it here to ensure Mockit.reset
+                    // works below.
+                    failure.addSuppressed(e);
+                }
+            }
             for (Class<?> clazz : staticMocks) {
                 mockingInProgressClass.set(clazz);
                 try {
