@@ -81,4 +81,19 @@ public class StaticMockitoSession {
             .startMocking()
             .finishMocking();
     }
+
+    @Test
+    public void invalidMockitoUsage_stillFinishesSessionCleanly() {
+        MockitoSession session = mockitoSession().mockStatic(A.class).startMocking();
+
+        // Intentionally invalid usage
+        doReturn(1);
+        session.finishMocking(new Throwable());
+
+        // Assert that A can be mocked again
+        mockitoSession().mockStatic(A.class).startMocking().finishMocking();
+    }
+
+    static class A {
+    }
 }
