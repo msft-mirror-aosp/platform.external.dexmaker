@@ -17,4 +17,3 @@ Local Modifications:
         Extend timeout of Stress#mockALot() for CTS. (Iad30a8cb07b38054b490b7006d11908fc752a024)
         Minor change: Remove empty statement in DexMaker (Ide74cc51907912883e658db7f049bcce3675fc01)
         Mock: Add multidimensional type class (I52ff53c9eab51bc91539ba54bc509a30fef501d1)
-        dexmaker: fix StaticInOrder for recent Mockito versions(I2bfd4486e66e5ed58c08a812205d20d5e43c3220)

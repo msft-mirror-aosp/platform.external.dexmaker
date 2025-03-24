@@ -17,7 +17,6 @@
 package com.android.dx.mockito.inline.extended;
 
 import org.mockito.InOrder;
-import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.verification.VerificationMode;
 
@@ -145,11 +144,5 @@ public class StaticInOrder implements InOrder {
     @Override
     public void verifyNoMoreInteractions() {
         instanceInOrder.verifyNoMoreInteractions();
-    }
-
-    @Override
-    public void verify(MockedStatic<?> mockedStatic, MockedStatic.Verification verification,
-            VerificationMode mode) {
-        instanceInOrder.verify(mockedStatic, verification, mode);
     }
 }
