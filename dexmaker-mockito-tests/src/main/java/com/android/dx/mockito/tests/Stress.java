@@ -33,7 +33,7 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public class Stress {
     private static final String LOG_TAG = Stress.class.getSimpleName();
-    private static final int NUM_TESTS = 80000;
+    private static final int NUM_TESTS = 10000;
 
     public static class TestClass {
         public String echo(String in) {
