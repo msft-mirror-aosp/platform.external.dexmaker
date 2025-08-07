@@ -17,3 +17,4 @@ Local Modifications:
         Extend timeout of Stress#mockALot() for CTS. (Iad30a8cb07b38054b490b7006d11908fc752a024)
         Minor change: Remove empty statement in DexMaker (Ide74cc51907912883e658db7f049bcce3675fc01)
         Mock: Add multidimensional type class (I52ff53c9eab51bc91539ba54bc509a30fef501d1)
+        Reduce stress test number of invocations (Id2b88cedc8fa93430acf168f2c0beefaad6bf3e8)
