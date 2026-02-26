@@ -279,11 +279,6 @@ java_library_static {
     java_version: "1.7",
 }
 
-java_import {
-    name: "dexmaker-dx-target",
-    jars: ["lib/dalvik-dx-9.0.0_r3.jar"],
-}
-
 // dexmaker tests
 java_library_static {
     name: "dexmaker-tests-lib",
